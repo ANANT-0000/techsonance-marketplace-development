@@ -7,7 +7,7 @@ import {
 } from "@/lib/utils";
 import { VendorDocument } from "@/utils/Types";
 import { ExternalLink, FileText, ImageIcon } from "lucide-react";
-import { DOCUMENT_MODAL_TEXT } from "@/constants/adminText";
+import { DOCUMENT_MODAL_TEXT } from "@/constants";
 
 export function DocumentModal({
   doc,

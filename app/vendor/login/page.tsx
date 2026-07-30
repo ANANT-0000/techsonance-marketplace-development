@@ -547,8 +547,16 @@ export default function VendorLoginPage() {
                       type={state.showPass ? "text" : "password"}
                       placeholder={VENDOR_LOGIN_TEXT.PASSWORD_PLACEHOLDER}
                       autoComplete="current-password"
-                      onPaste={(e) => e.preventDefault()}
-                      onCopy={(e) => e.preventDefault()}
+                      onPaste={(e) => {
+                        if (process.env.NODE_ENV !== "development") {
+                          e.preventDefault();
+                        }
+                      }}
+                      onCopy={(e) => {
+                        if (process.env.NODE_ENV !== "development") {
+                          e.preventDefault();
+                        }
+                      }}
                       className="w-full pl-12 pr-12 py-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl focus:bg-white focus:ring-4 focus:ring-platform-focus-ring focus:border-platform-primary outline-none transition-all text-slate-700 placeholder:text-slate-400 text-sm font-medium"
                       {...register("password")}
                     />

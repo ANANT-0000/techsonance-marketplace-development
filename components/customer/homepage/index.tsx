@@ -2,7 +2,7 @@ import { NewArrivalsDesktop } from "./NewArrivalsDesktop";
 import { CategoryCard } from "./CategoryCard";
 import { MobileCategoryPill } from "./MobileCategoryPill";
 import { TrustStrip } from "./TrustStrip";
-import { InteractiveHero, HeroLayout, HeroBgStyle } from "./InteractiveHero";
+import { InteractiveHero } from "./InteractiveHero";
 import { PromoBannerDesktop } from "./PromoBannerDesktop";
 import { NewsletterDesktop } from "./NewsletterDesktop";
 import { PromoBannerMobile } from "./PromoBannerMobile";
@@ -19,8 +19,6 @@ export {
   MobileCategoryPill,
   TrustStrip,
   InteractiveHero,
-  HeroLayout,
-  HeroBgStyle,
   PromoBannerDesktop,
   NewsletterDesktop,
   PromoBannerMobile,

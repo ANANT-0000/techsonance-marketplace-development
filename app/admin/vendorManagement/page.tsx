@@ -1,7 +1,6 @@
 "use client";
 import { Navbar } from "@/components/admin/Navbar";
 import { Pagination } from "@/components/common/Pagination";
-import { VENDOR_LIST } from "@/constants/admin";
 import { searchImgDark } from "@/constants/common";
 import { useEffect, useState } from "react";
 import Link from "next/link";

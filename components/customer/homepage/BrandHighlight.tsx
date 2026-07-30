@@ -22,7 +22,48 @@ export function BrandHighlight({ getField }: { getField: (k: string) => any }) {
   const rawStats = getField("brand_highlight_stats");
   const stats = Array.isArray(rawStats) && rawStats.length > 0 ? rawStats : BRAND_HIGHLIGHT_DEFAULT.stats;
 
-  if (!img) return null;
+  if (!img) {
+    // Text-only fallback: same content hierarchy without the image panel
+    return (
+      <section className="brand_highlight_desktop py-20 px-6 lg:px-16 xl:px-24 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="max-w-2xl">
+            {eyebrow && (
+              <p className="text-theme-tiny font-bold uppercase tracking-[0.3em] text-gray-400 mb-4">
+                {eyebrow}
+              </p>
+            )}
+            {title && (
+              <h2 className="text-theme-h3 lg:text-theme-h2 font-serif tracking-tight text-gray-900 mb-5 leading-tight">
+                {title}
+              </h2>
+            )}
+            {desc && (
+              <p className="text-theme-body-sm text-gray-500 leading-relaxed mb-6">
+                {desc}
+              </p>
+            )}
+            <div className="grid grid-cols-3 gap-4 mb-8 max-w-sm">
+              {stats.map((item: any) => (
+                <div key={item.label} className="text-center p-4 bg-gray-50 rounded-xl">
+                  <p className="text-theme-h5 font-black text-gray-900">{item.value}</p>
+                  <p className="text-theme-tiny text-gray-400 uppercase tracking-wider mt-1">
+                    {item.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <Link href="/store">
+              <button className="bg-gray-900 text-white hover:bg-black transition-colors px-8 py-3.5 text-theme-xxs font-bold uppercase tracking-widest rounded-xl">
+                {btnText}
+              </button>
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="brand_highlight_desktop  py-20 px-6 lg:px-16 xl:px-24 bg-white">
       <div className="max-w-7xl mx-auto">

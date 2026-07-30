@@ -11,9 +11,11 @@ export default async function ProductLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="flex w-full">
+    <main className="flex w-full max-h-screen overflow-hidden">
       <InnerSideBar selectedMenu="Catalog" />
-      {children}
+      <div className="h-full max-h-screen min-h-screen overflow-y-auto w-full">
+        {children}
+      </div>
     </main>
   );
 }

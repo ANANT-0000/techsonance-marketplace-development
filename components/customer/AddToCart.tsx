@@ -320,7 +320,7 @@ export function AddToCart({
             onClick={handleIncrement}
             disabled={isSyncing}
             whileTap={isSyncing ? {} : { scale: 0.97 }}
-            className="flex h-full w-full items-center justify-center gap-2 px-2 disabled:opacity-50 cursor-pointer border border-border"
+            className="flex h-full w-full items-center justify-center gap-2 px-2 disabled:opacity-50 cursor-pointer "
           >
             {isSyncing ? (
               <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
@@ -344,7 +344,7 @@ export function AddToCart({
               whileTap={isSyncing ? {} : { scale: 0.82 }}
               onClick={handleDecrement}
               disabled={isSyncing}
-              className="h-full aspect-square flex items-center justify-center rounded-md hover:bg-white/20 transition-colors disabled:opacity-50"
+              className="h-full aspect-square flex items-center justify-center rounded-md   transition-colors disabled:opacity-50"
               aria-label={ADD_TO_CART_TEXT.ARIA_REMOVE}
             >
               <Minus size={15} strokeWidth={2.5} />
@@ -367,7 +367,7 @@ export function AddToCart({
               whileTap={isSyncing ? {} : { scale: 0.82 }}
               onClick={handleIncrement}
               disabled={isSyncing}
-              className="h-full aspect-square flex items-center justify-center rounded-md hover:bg-white/20 transition-colors disabled:opacity-50"
+              className="h-full aspect-square flex items-center justify-center rounded-md   transition-colors disabled:opacity-50"
               aria-label={ADD_TO_CART_TEXT.ARIA_ADD}
             >
               <Plus size={15} strokeWidth={2.5} />

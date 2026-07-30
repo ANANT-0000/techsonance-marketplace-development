@@ -3,7 +3,7 @@
 import React, { Suspense, useState } from "react";
 import { handleAddRole } from "@/utils/adminApiClients";
 import RoleList from "./RoleList";
-import { ROLES_TEXT } from "@/constants/adminText";
+import { ROLES_TEXT } from "@/constants";
 import { Loader2, Plus } from "lucide-react";
 
 export default function RolesSection({

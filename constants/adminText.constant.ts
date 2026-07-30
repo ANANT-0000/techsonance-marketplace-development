@@ -99,7 +99,10 @@ export const ADMIN_LOGIN_TEXT = {
   REDIRECT_SUFFIX: "s",
   ERROR_TITLE: "Access denied",
   ERROR_DEFAULT_MSG: "Invalid credentials or insufficient permissions.",
+  NETWORK_ERROR_MSG: "Network error. Please try again.",
+  STORAGE_ERROR_MSG: "Please enable local storage to sign in.",
   BTN_TRY_AGAIN: "Try again",
+  BTN_GO_NOW: "Go now",
 };
 
 export const SUBSCRIBATION_TEXT = {
@@ -176,6 +179,12 @@ export const SUBSCRIBATION_TEXT = {
     SAVE_DRAFT_BTN: "Save Draft",
     PUBLISH_LIVE_BTN: "Publish Live",
     UNPUBLISH_BTN: "Unpublish",
+    CONFLICT_BANNER_TEXT:
+      "Another admin has updated this plan. Please discard your changes and reload to see the latest version.",
+    DISCARD_RELOAD_BTN: "Discard & Reload",
+    PUBLISH_ERROR_PREFIX:
+      "Cannot publish. The following feature keys are undefined:",
+    DISMISS_BTN: "Dismiss",
     PRICING_TITLE: "Pricing Tier Intervals",
     ADD_PRICE_BTN: "Add Price",
     LABEL_INTERVAL: "Interval",
@@ -201,7 +210,8 @@ export const SUBSCRIBATION_TEXT = {
   },
   CATALOG: {
     TITLE: "Features Catalog",
-    SUBTITLE: "Manage global feature keys, display names, and value types enforced by the quota system.",
+    SUBTITLE:
+      "Manage global feature keys, display names, and value types enforced by the quota system.",
     ADD_BTN: "Add Feature Definition",
     TABLE_HEADERS: {
       KEY: "Feature Key / Identifier",
@@ -225,7 +235,8 @@ export const SUBSCRIBATION_TEXT = {
     SAVE_BTN: "Save Feature",
     CANCEL_BTN: "Cancel",
     DELETE_BTN: "Delete",
-    CONFIRM_DELETE: "Are you sure you want to delete this feature definition? This will remove all associated plan feature limits.",
+    CONFIRM_DELETE:
+      "Are you sure you want to delete this feature definition? This will remove all associated plan feature limits.",
     SUCCESS_CREATE: "Feature definition created successfully!",
     FAILED_CREATE: "Failed to create feature definition.",
     SUCCESS_UPDATE: "Feature definition updated successfully!",
@@ -234,4 +245,77 @@ export const SUBSCRIBATION_TEXT = {
     FAILED_DELETE: "Failed to delete feature definition.",
     FETCH_ERROR: "Failed to load feature definitions.",
   },
+};
+export const SITE_MAPS_TEXT = {
+  PAGE_TITLE: "Router Mappings",
+  PAGE_DESCRIPTION: "Manage dynamic routing prefixes across the application.",
+  LOADING_TEXT: "Loading router mappings...",
+  ERROR_TITLE: "Failed to load mappings",
+  ERROR_DESC_DEFAULT:
+    "There was an unexpected issue loading your router mappings.",
+  TRY_AGAIN: "Try Again",
+  NO_MAPPINGS_TITLE: "No router mappings found",
+  NO_MAPPINGS_DESC:
+    "You don't have any custom routes configured yet. Add your first mapping to get started with custom paths.",
+  ADD_FIRST_MAPPING: "Add First Mapping",
+  ADD_MAPPING: "Add Mapping",
+  SYSTEM_TAG: "System",
+  EMPTY_QUERY_PARAM: "—",
+  CONFIRM_DELETE: "Are you sure you want to delete the mapping for ",
+  SUCCESS_CREATE: "Router mapping created successfully.",
+  SUCCESS_UPDATE: "Router mapping updated successfully.",
+  SUCCESS_DELETE: "Router mapping deleted successfully.",
+  ERROR_CREATE: "Failed to create router mapping.",
+  ERROR_UPDATE: "Failed to update router mapping.",
+  ERROR_DELETE: "Failed to delete router mapping.",
+  MODAL_EDIT_TITLE: "Edit Router Mapping",
+  MODAL_ADD_TITLE: "Add Router Mapping",
+  MODAL_EDIT_DESC: "Modify the properties of this mapping.",
+  MODAL_ADD_DESC: "Create a new site route mapped to your storefront.",
+  MODAL_SYSTEM_WARNING:
+    "This is a system mapping. Its unique Key cannot be modified to prevent breaking core features, but you can change its label and path.",
+  LABEL_KEY: "Unique Key",
+  LABEL_DISPLAY_LABEL: "Display Label",
+  LABEL_BASE_PATH: "Base Path",
+  LABEL_QUERY_PARAM: "Default Query Param (Optional)",
+  DESC_QUERY_PARAM:
+    "The search parameter appended to the URL for dynamic routes.",
+  PLACEHOLDER_KEY: "e.g., store, blog, faq",
+  PLACEHOLDER_LABEL: "e.g., Store / Shop",
+  PLACEHOLDER_BASE_PATH: "e.g., /store/product",
+  PLACEHOLDER_QUERY_PARAM: "e.g., category",
+  BTN_CANCEL: "Cancel",
+  BTN_SAVING: "Saving...",
+  BTN_SAVE: "Save Mapping",
+  SESSION_EXPIRED_TITLE: "Session Expired",
+  SESSION_EXPIRED_DESC:
+    "Your session needs to be refreshed to manage site mappings. Please log in again to continue.",
+  LOG_IN_AGAIN: "Log In Again",
+};
+
+export const FILTER_RULES_TEXT = {
+  TITLE: "Product Filters & Collections",
+  SUBTITLE: "Manage dynamic product collections and filter rules for your storefront.",
+  ADD_FILTER_BTN: "Create New Filter",
+  MODAL_CREATE_TITLE: "Create Product Filter",
+  MODAL_EDIT_TITLE: "Edit Product Filter",
+  LABEL_FILTER_NAME: "Filter Name",
+  PLACEHOLDER_FILTER_NAME: "e.g., Summer Sale 2026",
+  LABEL_RULES: "Rules",
+  ADD_RULE_BTN: "Add Rule",
+  SELECT_TYPE: "Select Type",
+  SELECT_OPERATOR: "Select Operator",
+  VALUE_PLACEHOLDER: "Enter value...",
+  SAVE_BTN: "Save Filter",
+  CANCEL_BTN: "Cancel",
+  DELETE_BTN: "Delete Filter",
+  CONFIRM_DELETE: "Are you sure you want to delete this filter? Any navigation links using it will be broken.",
+  SUCCESS_CREATE: "Filter created successfully!",
+  FAILED_CREATE: "Failed to create filter.",
+  SUCCESS_UPDATE: "Filter updated successfully!",
+  FAILED_UPDATE: "Failed to update filter.",
+  SUCCESS_DELETE: "Filter deleted successfully!",
+  FAILED_DELETE: "Failed to delete filter.",
+  FETCH_ERROR: "Failed to load filters.",
+  NO_FILTERS_FOUND: "No product filters found. Create one to power your dynamic collections!"
 };

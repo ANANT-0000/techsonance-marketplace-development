@@ -12,6 +12,7 @@ import {
   LOOKBOOK_DEFAULT_HOTSPOTS,
 } from "@/constants/storefront";
 import { SHOPPABLE_LOOKBOOK_TEXT } from "@/constants/customerText";
+import { IMAGE_PLACEHOLDER } from "@/constants";
 
 const LOOKBOOK_BLUR_DATA_URL =
   "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 9'%3E%3Crect width='16' height='9' fill='%23f1f5f9'/%3E%3C/svg%3E";
@@ -157,7 +158,14 @@ export function ShoppableLookbook({
               blurDataURL={LOOKBOOK_BLUR_DATA_URL}
             />
           ) : (
-            <Skeleton className="w-full h-full p-4 lg:p-8 rounded-4xl" />
+            <Image
+              src={IMAGE_PLACEHOLDER}
+              alt={displayTitle}
+              fill
+              className="object-cover rounded-3xl"
+              sizes="(max-width: 1280px) 100vw, 1280px"
+              quality={75}
+            />
           )}
 
           {/* Render Hotspots */}
@@ -248,20 +256,18 @@ export function ShoppableLookbook({
                         <>
                           <div className="flex gap-3">
                             {/* Thumbnail */}
-                            {imageUrl && (
-                              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-white border border-slate-100 flex-shrink-0">
-                                <Image
-                                  src={imageUrl}
-                                  alt={name || SHOPPABLE_LOOKBOOK_TEXT.PRODUCT}
-                                  fill
-                                  className="object-contain p-1"
-                                  sizes="56px"
-                                  quality={60}
-                                  placeholder="blur"
-                                  blurDataURL={THUMBNAIL_BLUR_DATA_URL}
-                                />
-                              </div>
-                            )}
+                            <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-white border border-slate-100 flex-shrink-0">
+                              <Image
+                                src={imageUrl || IMAGE_PLACEHOLDER}
+                                alt={name || SHOPPABLE_LOOKBOOK_TEXT.PRODUCT}
+                                fill
+                                className="object-contain p-1"
+                                sizes="56px"
+                                quality={60}
+                                placeholder="blur"
+                                blurDataURL={THUMBNAIL_BLUR_DATA_URL}
+                              />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="text-theme-caption font-bold text-slate-800 truncate mb-0.5">
                                 {name}

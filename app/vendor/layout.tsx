@@ -5,7 +5,8 @@ import { Sidebar } from "@/components/common/Sidebar";
 import { VENDOR_NAV_LINKS } from "@/constants/vendor";
 import { useRouter, usePathname } from "next/navigation";
 import { useAppSelector } from "@/hooks/reduxHooks";
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react";
 import { RootState } from "@/lib/store";
 import { UserRole, VEDNOR_LOGIN_PATH } from "@/constants";
 import AxiosAPI from "@/lib/axios";
@@ -36,6 +37,11 @@ export default function VendorLayout({
     "/vendor/forgotPassword",
   ];
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (isPublicRoute) return;
@@ -81,15 +87,19 @@ export default function VendorLayout({
     return <>{children}</>;
   }
 
+  if (!mounted) {
+    return null;
+  }
+
   if (!isAuthenticated || role !== UserRole.VENDOR) {
     return null;
   }
 
   return (
     <>
-      <main className={`flex w-full`}>
+      <main className={`flex w-full h-screen overflow-hidden`}>
         <Sidebar NAV_LINKS={VENDOR_NAV_LINKS} basePath={VENDOR_BASE_PATH} />
-        <div className="flex-1 flex flex-col min-w-0 min-h-screen ">
+        <div className="flex-1 flex flex-col min-w-0 h-full overflow-auto">
           {user &&
             "vendor_status" in user &&
             user.vendor_status !== "PENDING" && (

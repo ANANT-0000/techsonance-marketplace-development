@@ -28,8 +28,9 @@ import {
   formatMinorUnits,
   majorToMinorUnits,
 } from "@/hooks/useCmsSubscriptionPlans";
+import { useFeatureDefinitions } from "@/hooks/useFeatureDefinitions";
 import { FeatureType, PriceInterval, PlanStatus } from "@/utils/Types";
-import { SUBSCRIBATION_TEXT } from "@/constants/adminText";
+import { SUBSCRIBATION_TEXT } from "@/constants";
 import { formatFeatureDisplay } from "@/lib/utils";
 import {
   DEFAULT_CURRENCY,
@@ -65,6 +66,10 @@ interface PlansTabProps {
   handlePublishPlan: () => Promise<void>;
   handleUnpublishPlan: () => Promise<void>;
   handleCreatePlan: () => Promise<void>;
+  conflictKeys?: Set<string>;
+  resolveConflict?: (planKey: string) => void;
+  publishErrors?: Record<string, string[]>;
+  clearPublishError?: (planKey: string) => void;
   ACTION: any;
 }
 
@@ -85,8 +90,14 @@ export default function PlansTab({
   handlePublishPlan,
   handleUnpublishPlan,
   handleCreatePlan,
+  conflictKeys,
+  resolveConflict,
+  publishErrors,
+  clearPublishError,
   ACTION,
 }: PlansTabProps) {
+  const { featureDefinitions } = useFeatureDefinitions();
+
   return (
     <div className="mb-10 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 border-b border-slate-100 pb-4">
@@ -262,6 +273,41 @@ export default function PlansTab({
           {/* CMS Plan Editor Container */}
           {draft && (
             <div className="border-t border-slate-100 pt-6 mt-6">
+              {conflictKeys?.has(draft.plan_key) && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 mb-6">
+                  <span className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 shrink-0" />
+                    {SUBSCRIBATION_TEXT.CMS_EDITOR.CONFLICT_BANNER_TEXT}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => resolveConflict?.(draft.plan_key)}
+                  >
+                    {SUBSCRIBATION_TEXT.CMS_EDITOR.DISCARD_RELOAD_BTN}
+                  </Button>
+                </div>
+              )}
+
+              {publishErrors?.[draft.plan_key] && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive mb-6">
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    {SUBSCRIBATION_TEXT.CMS_EDITOR.PUBLISH_ERROR_PREFIX}{" "}
+                    {publishErrors[draft.plan_key].join(", ")}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => clearPublishError?.(draft.plan_key)}
+                  >
+                    {SUBSCRIBATION_TEXT.CMS_EDITOR.DISMISS_BTN}
+                  </Button>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-150 bg-slate-50/50 p-4 mb-6 shadow-xs">
                 <div className="flex items-center gap-3">
                   <h3 className="text-md font-bold capitalize text-slate-900">
@@ -364,10 +410,7 @@ export default function PlansTab({
                         size="xs"
                         variant="outline"
                         onClick={() => {
-                          const next = [
-                            ...draft.prices,
-                            { ...DEFAULT_PRICE },
-                          ];
+                          const next = [...draft.prices, { ...DEFAULT_PRICE }];
                           dispatch({
                             type: ACTION.UPDATE_DRAFT,
                             payload: { ...draft, prices: next },
@@ -590,9 +633,7 @@ export default function PlansTab({
                     <div className="max-h-[350px] overflow-y-auto pr-1.5 space-y-2">
                       <ReorderableList
                         items={draft.features}
-                        getKey={(_, i) =>
-                          `${REORDER_KEY_PREFIX.FEATURE}-${i}`
-                        }
+                        getKey={(_, i) => `${REORDER_KEY_PREFIX.FEATURE}-${i}`}
                         onReorder={(features) =>
                           dispatch({
                             type: ACTION.UPDATE_DRAFT,
@@ -623,35 +664,42 @@ export default function PlansTab({
 
                             <div className="grid min-w-[130px] flex-1 gap-1">
                               <Label className="text-xs text-slate-500">
-                                {
-                                  SUBSCRIBATION_TEXT.ACTIONS
-                                    .FEATURE_KEY_LABEL
-                                }
+                                {SUBSCRIBATION_TEXT.ACTIONS.FEATURE_KEY_LABEL}
                               </Label>
-                              <Input
-                                value={feature.feature_key.replace(
-                                  /_/g,
-                                  " ",
-                                )}
-                                placeholder={
-                                  SUBSCRIBATION_TEXT.ACTIONS
-                                    .FEATURE_KEY_PLACEHOLDER
-                                }
-                                onChange={(e) => {
+                              <Select
+                                value={feature.feature_key || ""}
+                                onValueChange={(val) => {
                                   const next = [...draft.features];
                                   next[i] = {
                                     ...next[i],
-                                    feature_key: e.target.value
-                                      .toLowerCase()
-                                      .replace(/\s+/g, "_"),
+                                    feature_key: val,
                                   };
                                   dispatch({
                                     type: ACTION.UPDATE_DRAFT,
                                     payload: { ...draft, features: next },
                                   });
                                 }}
-                                className="text-xs h-8 capitalize"
-                              />
+                              >
+                                <SelectTrigger className="text-xs h-8 capitalize">
+                                  <SelectValue
+                                    placeholder={
+                                      SUBSCRIBATION_TEXT.ACTIONS
+                                        .FEATURE_KEY_PLACEHOLDER
+                                    }
+                                  />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {featureDefinitions.map((def) => (
+                                    <SelectItem
+                                      key={def.feature_key}
+                                      value={def.feature_key}
+                                      className="text-xs"
+                                    >
+                                      {def.display_name} ({def.feature_key})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               <FieldError
                                 message={
                                   errors[
@@ -667,10 +715,7 @@ export default function PlansTab({
 
                             <div className="grid min-w-[120px] gap-1">
                               <Label className="text-xs text-slate-500">
-                                {
-                                  SUBSCRIBATION_TEXT.CMS_EDITOR
-                                    .LABEL_BEHAVIOR
-                                }
+                                {SUBSCRIBATION_TEXT.CMS_EDITOR.LABEL_BEHAVIOR}
                               </Label>
                               <Select
                                 value={
@@ -688,9 +733,7 @@ export default function PlansTab({
                                     };
                                   } else {
                                     const currentVal = next[i].value;
-                                    const isNum = /^-?\d+$/.test(
-                                      currentVal,
-                                    );
+                                    const isNum = /^-?\d+$/.test(currentVal);
                                     next[i] = {
                                       ...next[i],
                                       type: isNum
@@ -722,10 +765,7 @@ export default function PlansTab({
                                         .BEHAVIOR_TOGGLE
                                     }
                                   </SelectItem>
-                                  <SelectItem
-                                    value="text"
-                                    className="text-xs"
-                                  >
+                                  <SelectItem value="text" className="text-xs">
                                     Text / Limit Value
                                   </SelectItem>
                                 </SelectContent>
@@ -908,8 +948,7 @@ export default function PlansTab({
 
                       <p className="mt-3 text-xs text-slate-500 leading-relaxed font-normal">
                         {draft.description ||
-                          SUBSCRIBATION_TEXT.CMS_EDITOR
-                            .PREVIEW_DEFAULT_DESC}
+                          SUBSCRIBATION_TEXT.CMS_EDITOR.PREVIEW_DEFAULT_DESC}
                       </p>
 
                       <div className="my-4 h-px w-full bg-slate-100" />

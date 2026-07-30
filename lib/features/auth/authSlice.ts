@@ -63,13 +63,11 @@ const initialState: AuthType = {
 };
 
 const setAuthCookie = (name: string, value: string) => {
-  const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
-  const secureFlag = isHttps ? "; Secure" : "";
-  document.cookie = `${name}=${value}; path=/; max-age=604800; SameSite=Lax${secureFlag}`;
+  document.cookie = `${name}=${value}; path=/; max-age=604800; SameSite=Lax; Secure`;
 };
 
 const clearAuthCookie = (name: string) => {
-  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure`;
 };
 
 export const getPreloadedAuthState = (): { auth: AuthType } => {

@@ -4,7 +4,7 @@ import { CmsSection } from "./Section";
 import { InputField } from "./InputField";
 import { UILabels } from "@/constants/ui-labels";
 import { AddBtn } from "./AddBtn";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Layers } from "lucide-react";
 import { UiText } from "@/constants/ui-text";
 
 export const CmsFooterTab = ({
@@ -34,10 +34,20 @@ export const CmsFooterTab = ({
           />
         }
       >
+        
+        {(!data.content || data.content.length === 0) && (
+          <div className="flex flex-col items-center justify-center p-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl text-center">
+            <div className="w-12 h-12 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
+              <Layers size={20} />
+            </div>
+            <h3 className="text-gray-900 font-semibold mb-1">{UiText.NO_FOOTER_COLUMNS_TITLE}</h3>
+            <p className="text-sm text-gray-500 max-w-sm">{UiText.NO_FOOTER_COLUMNS_DESC}</p>
+          </div>
+        )}
         {(data.content || []).map((col: any, ci: number) => (
           <div
             key={col.id || ci}
-            className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3"
+            className="bg-white border border-gray-200 shadow-sm rounded-2xl p-5 space-y-4 min-w-0 flex flex-col"
           >
             <div className="flex justify-between items-center gap-3">
               <div className="flex-1">
@@ -73,7 +83,7 @@ export const CmsFooterTab = ({
                       ),
                     )
                   }
-                  className="text-theme-caption bg-white border border-gray-200 px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1"
+                  className="text-theme-caption bg-white border border-gray-200 hover:bg-gray-50 px-4 py-2 rounded-xl shadow-sm font-semibold flex items-center gap-1.5 transition-colors"
                 >
                   <Plus size={12} /> {UiText.LINK}
                 </button>
@@ -97,9 +107,9 @@ export const CmsFooterTab = ({
                   key={lnk.id || li}
                   className="flex gap-3 items-end bg-white border border-gray-100 p-2.5 rounded-lg"
                 >
-                  <div className="flex-1 grid grid-cols-2 gap-2">
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
                     <input
-                      placeholder="Label"
+                      placeholder={UiText.PLACEHOLDERS.LINK_LABEL}
                       value={lnk.title}
                       onChange={(e) =>
                         set(
@@ -121,10 +131,10 @@ export const CmsFooterTab = ({
                           ),
                         )
                       }
-                      className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-theme-caption"
+                      className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-theme-caption shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-slate-900 min-w-0"
                     />
                     <input
-                      placeholder="/path"
+                      placeholder={UiText.PLACEHOLDERS.LINK_PATH}
                       value={lnk.url}
                       onChange={(e) =>
                         set(
@@ -143,7 +153,7 @@ export const CmsFooterTab = ({
                           ),
                         )
                       }
-                      className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-theme-caption font-mono"
+                      className="bg-white border border-gray-200 rounded-xl px-4 py-2 text-theme-caption font-mono text-xs shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-slate-900 min-w-0 break-all"
                     />
                   </div>
                   <button

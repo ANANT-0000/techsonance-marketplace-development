@@ -70,20 +70,14 @@ export const createPermission = async (
     throw error;
   }
 };
-export const handleAddRole = async (
-  formData: FormData,
-  token: string,
-) => {
+export const handleAddRole = async (formData: FormData, token: string) => {
   const newRole = formData.get("role") as string;
   if (!newRole.trim()) return;
   const createdRoleResult = await createRole(newRole.trim(), token);
   revalidatePath(`/admin/role`);
   return createdRoleResult;
 };
-export const handleDeleteRole = async (
-  id: string,
-  token: string,
-) => {
+export const handleDeleteRole = async (id: string, token: string) => {
   await fetch(`${BASE_API_URL}/v1/roles/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
@@ -101,10 +95,7 @@ export const handleAddPermission = async (
   return await createPermission(name.trim().toLowerCase(), token);
 };
 
-export const handleDeletePermission = async (
-  id: string,
-  token: string,
-) => {
+export const handleDeletePermission = async (id: string, token: string) => {
   const response = await fetch(`${BASE_API_URL}/v1/permissions/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
@@ -323,13 +314,16 @@ export const fetchDeleteTemplate = async (id: string, token: string) => {
 
 export const fetchAdminSubscriptions = async (token: string) => {
   try {
-    const response = await fetch(`${BASE_API_URL}/v1/admin/subscription-plans/vendors`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+    const response = await fetch(
+      `${BASE_API_URL}/v1/admin/subscription-plans/vendors`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       },
-    });
+    );
     if (!response.ok) {
       throw new Error("Failed to fetch vendor subscriptions");
     }
@@ -379,6 +373,106 @@ export const fetchLiveSubscriptionPlans = async (token: string) => {
     );
     if (!response.ok) {
       throw new Error("Failed to fetch live subscription plans");
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const fetchSiteMaps = async (token: string) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/site-maps`, {
+      method: "GET",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch site maps");
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const createSiteMap = async (
+  payload: {
+    key: string;
+    label: string;
+    base_path: string;
+    default_query_param?: string;
+  },
+  token: string,
+) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/site-maps`, {
+      method: "POST",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to create site map");
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateSiteMap = async (
+  id: string,
+  payload: {
+    key?: string;
+    label: string;
+    base_path: string;
+    default_query_param?: string;
+  },
+  token: string,
+) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/site-maps/${id}`, {
+      method: "PUT",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to update site map");
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteSiteMap = async (id: string, token: string) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/site-maps/${id}`, {
+      method: "DELETE",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to delete site map");
     }
     return await response.json();
   } catch (error) {

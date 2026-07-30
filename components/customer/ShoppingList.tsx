@@ -1,7 +1,7 @@
 "use client";
 import { useReducer, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-
+import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence, LayoutGroup } from "motion/react";
 import { ChevronDown, Loader2, PackageSearch } from "lucide-react";
 
@@ -10,12 +10,11 @@ import { useStoreFrontCmsData } from "@/hooks/useStoreFrontCmsData";
 import { Pagination } from "../common/Pagination";
 import { FilterSidebar, FilterState } from "./FilterSidebar";
 import { ProductSkeleton } from "../common/ProductSkeleton";
-import { SearchBar } from "./SearchBar";
-import { Product, Category } from "@/utils/Types";
 import { ShoppingPageSkeleton } from "./ShoppingPageSkeleton";
 
 import {
   fetchProducts,
+  fetchCollectionProducts,
   fetchCategories,
   SortBy,
 } from "@/utils/commonAPiClient";
@@ -37,64 +36,6 @@ const DEFAULT_FILTERS: FilterState = {
   maxPrice: ShoppingListConfig.DEFAULT_MAX_PRICE,
   selectedCategories: [],
 };
-
-// ─── State ────────────────────────────────────────────────────────────────────
-
-interface State {
-  products: Product[];
-  categories: Category[];
-  isLoading: boolean;
-  totalPages: number;
-  total: number;
-  isSortOpen: boolean;
-  pageIsLoading: boolean;
-}
-
-enum ActionType {
-  SET_PRODUCTS_DATA = "SET_PRODUCTS_DATA",
-  SET_LOADING = "SET_LOADING",
-  SET_SORT_OPEN = "SET_SORT_OPEN",
-  SET_PAGE_LOADING = "SET_PAGE_LOADING",
-  SET_CATEGORIES = "SET_CATEGORIES",
-}
-
-type Action =
-  | {
-      type: ActionType.SET_PRODUCTS_DATA;
-      payload: {
-        products: Product[];
-        total: number;
-        totalPages: number;
-      };
-    }
-  | { type: ActionType.SET_LOADING; payload: boolean }
-  | { type: ActionType.SET_SORT_OPEN; payload: boolean }
-  | { type: ActionType.SET_PAGE_LOADING; payload: boolean }
-  | { type: ActionType.SET_CATEGORIES; payload: Category[] };
-
-function reducer(state: State, action: Action): State {
-  switch (action.type) {
-    case ActionType.SET_PAGE_LOADING:
-      return { ...state, pageIsLoading: action.payload };
-    case ActionType.SET_CATEGORIES:
-      return { ...state, categories: action.payload };
-    case ActionType.SET_PRODUCTS_DATA:
-      return {
-        ...state,
-        products: action.payload.products,
-        total: action.payload.total,
-        totalPages: action.payload.totalPages,
-      };
-    case ActionType.SET_LOADING:
-      return { ...state, isLoading: action.payload };
-    case ActionType.SET_SORT_OPEN:
-      return { ...state, isSortOpen: action.payload };
-    default: {
-      const _exhaustiveCheck: never = action;
-      return state;
-    }
-  }
-}
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 // These build a new URLSearchParams from the current ones plus a delta,
@@ -119,11 +60,12 @@ function buildParams(
 
 interface ShoppingListProps {
   styles?: string;
+  collectionSlug?: string;
 }
 
 import { Suspense } from "react";
 
-function ShoppingListContent({ styles }: ShoppingListProps) {
+function ShoppingListContent({ styles, collectionSlug }: ShoppingListProps) {
   useStoreFrontCmsData(); // keeps CMS subscription alive
 
   const router = useRouter();
@@ -133,14 +75,21 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
   // ── Derive all "controlled" state directly from URL ───────────────────────
   const search = searchParams.get("search") ?? "";
   const category = searchParams.get("category") ?? "";
-  const minPrice = Number(
-    searchParams.get("min_price") ?? ShoppingListConfig.DEFAULT_MIN_PRICE,
-  );
-  const maxPrice = Number(
-    searchParams.get("max_price") ?? ShoppingListConfig.DEFAULT_MAX_PRICE,
-  );
+
+  const rawMinPrice = Number(searchParams.get("min_price"));
+  const minPrice = isNaN(rawMinPrice)
+    ? ShoppingListConfig.DEFAULT_MIN_PRICE
+    : rawMinPrice;
+
+  const rawMaxPrice = Number(searchParams.get("max_price"));
+  const maxPrice = isNaN(rawMaxPrice)
+    ? ShoppingListConfig.DEFAULT_MAX_PRICE
+    : rawMaxPrice;
+
   const sortBy = (searchParams.get("sort_by") as SortBy) ?? "newest";
-  const page = Number(searchParams.get("page") ?? 1);
+
+  const rawPage = Number(searchParams.get("page"));
+  const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
 
   const filters: FilterState = {
     minPrice,
@@ -149,106 +98,82 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
   };
 
   // ── Local UI-only state ───────────────────────────────────────────────────
-  const [state, dispatch] = useReducer(reducer, {
-    pageIsLoading: true,
-    products: [],
-    categories: [],
-    isLoading: true,
-    totalPages: 1,
-    total: 0,
-    isSortOpen: false,
-  });
-
+  const [isSortOpen, setIsSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
 
   // Close sort dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
-        dispatch({ type: ActionType.SET_SORT_OPEN, payload: false });
+        setIsSortOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Fetch categories once on mount
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const categoriesList = await fetchCategories();
-        dispatch({
-          type: ActionType.SET_CATEGORIES,
-          payload: categoriesList,
-        });
-      } catch (e) {
-        toast.error(ShoppingListConfig.ERROR_LOAD_CATEGORIES);
+  const { data: categories = [], isError: isCategoriesError } = useQuery({
+    queryKey: ["categories", "shopping-list"],
+    queryFn: async () => {
+      return await fetchCategories();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const {
+    data: productsData,
+    isLoading,
+    isError: isProductsError,
+  } = useQuery({
+    queryKey: [
+      "shopping-list",
+      search,
+      category,
+      minPrice,
+      maxPrice,
+      sortBy,
+      page,
+      collectionSlug,
+    ],
+    queryFn: async () => {
+      const queryParams = {
+        search: search.replace("...", "") || undefined,
+        category: category || undefined,
+        min_price:
+          minPrice > ShoppingListConfig.DEFAULT_MIN_PRICE
+            ? minPrice
+            : undefined,
+        max_price:
+          maxPrice < ShoppingListConfig.DEFAULT_MAX_PRICE
+            ? maxPrice
+            : undefined,
+        sort_by: sortBy,
+        offset: (page - 1) * ShoppingListConfig.PAGE_SIZE,
+        limit: ShoppingListConfig.PAGE_SIZE,
+      };
+
+      if (collectionSlug) {
+        return await fetchCollectionProducts(collectionSlug, queryParams);
       }
-    };
-    loadCategories();
-  }, []);
+      return await fetchProducts(queryParams);
+    },
+  });
 
-  // ── Single source-of-truth fetch: fires whenever URL params change ────────
+  const products = productsData?.data ?? [];
+  const total = productsData?.total ?? 0;
+  const totalPages = productsData?.totalPages ?? 1;
+
   useEffect(() => {
-    let cancelled = false;
+    if (isCategoriesError) {
+      toast.error(ShoppingListConfig.ERROR_LOAD_CATEGORIES);
+    }
+  }, [isCategoriesError]);
 
-    const loadProducts = async () => {
-      dispatch({ type: ActionType.SET_LOADING, payload: true });
-      try {
-        const response = await fetchProducts({
-          search: search.replace("...", "") || undefined,
-          category: category || undefined,
-          min_price:
-            minPrice > ShoppingListConfig.DEFAULT_MIN_PRICE
-              ? minPrice
-              : undefined,
-          max_price:
-            maxPrice < ShoppingListConfig.DEFAULT_MAX_PRICE
-              ? maxPrice
-              : undefined,
-          sort_by: sortBy,
-          offset: (page - 1) * ShoppingListConfig.PAGE_SIZE,
-          limit: ShoppingListConfig.PAGE_SIZE,
-        });
-
-        if (cancelled) return;
-
-        dispatch({
-          type: ActionType.SET_PRODUCTS_DATA,
-          payload: {
-            products: response.data ?? [],
-            total: response.total ?? 0,
-            totalPages: response.totalPages ?? 1,
-          },
-        });
-      } catch (e) {
-        toast.error(ShoppingListConfig.ERROR_LOAD_PRODUCTS);
-
-        if (!cancelled) {
-          dispatch({
-            type: ActionType.SET_PRODUCTS_DATA,
-            payload: {
-              products: [],
-              total: 0,
-              totalPages: 1,
-            },
-          });
-        }
-      } finally {
-        if (!cancelled) {
-          dispatch({ type: ActionType.SET_LOADING, payload: false });
-          dispatch({ type: ActionType.SET_PAGE_LOADING, payload: false });
-        }
-      }
-    };
-
-    loadProducts();
-    return () => {
-      cancelled = true;
-    };
-    // searchParams.toString() as the dep: re-runs whenever ANY param changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString()]);
+  useEffect(() => {
+    if (isProductsError) {
+      toast.error(ShoppingListConfig.ERROR_LOAD_PRODUCTS);
+    }
+  }, [isProductsError]);
 
   // ── URL-updating handlers ─────────────────────────────────────────────────
 
@@ -260,7 +185,7 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
   };
   const handleSortChange = (value: SortBy) => {
     pushParams({ sort_by: value, page: 1 });
-    dispatch({ type: ActionType.SET_SORT_OPEN, payload: false });
+    setIsSortOpen(false);
   };
 
   const handleFiltersChange = (newFilters: FilterState) => {
@@ -302,12 +227,12 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
         <div className="flex gap-8">
           {/* Desktop Sidebar */}
           <FilterSidebar
-            categories={state.categories}
+            categories={categories}
             filters={filters}
             onFiltersChange={handleFiltersChange}
             sortBy={sortBy}
             onSortChange={handleSortChange}
-            totalResults={state.total}
+            totalResults={total}
           />
 
           <motion.div layout="position" className="flex-1 min-w-0">
@@ -316,7 +241,7 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
               {/* Mobile count */}
               <div className="lg:hidden w-full flex justify-between items-center">
                 <p className="text-xxs sm:text-theme-caption md:text-theme-body-sm text-gray-500 mt-1">
-                  {SHOPPING_LIST_TEXT.SHOWING} {state.total}{" "}
+                  {SHOPPING_LIST_TEXT.SHOWING} {total}{" "}
                   {SHOPPING_LIST_TEXT.ITEMS}
                 </p>
               </div>
@@ -324,28 +249,23 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
               {/* Desktop search + sort */}
               <div className="hidden lg:flex w-full items-center justify-between">
                 <div className="text-xxs sm:text-theme-caption md:text-theme-body-sm text-gray-500 font-medium">
-                  {SHOPPING_LIST_TEXT.SHOWING} {state.total}{" "}
+                  {SHOPPING_LIST_TEXT.SHOWING} {total}{" "}
                   {SHOPPING_LIST_TEXT.PRODUCTS}
                 </div>
                 <div className="flex items-center gap-4">
                   <div ref={sortRef} className="relative">
                     <button
-                      onClick={() =>
-                        dispatch({
-                          type: ActionType.SET_SORT_OPEN,
-                          payload: !state.isSortOpen,
-                        })
-                      }
+                      onClick={() => setIsSortOpen(!isSortOpen)}
                       className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-full text-theme-caption sm:text-theme-body-sm font-medium text-gray-700 bg-white hover:border-gray-300 transition-colors"
                     >
                       {SHOPPING_LIST_TEXT.SORT_BY} {currentSortLabel}
                       <ChevronDown
                         size={16}
-                        className={`text-gray-400 transition-transform ${state.isSortOpen ? "rotate-180" : ""}`}
+                        className={`text-gray-400 transition-transform ${isSortOpen ? "rotate-180" : ""}`}
                       />
                     </button>
                     <AnimatePresence>
-                      {state.isSortOpen && (
+                      {isSortOpen && (
                         <motion.div
                           initial={{ opacity: 0, y: 5 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -375,7 +295,7 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
 
             {/* Grid */}
             <AnimatePresence mode="wait">
-              {state.isLoading ? (
+              {isLoading ? (
                 <motion.ul
                   key="skeleton"
                   initial={{ opacity: 0 }}
@@ -389,7 +309,7 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
                     ),
                   )}
                 </motion.ul>
-              ) : state.products.length === 0 ? (
+              ) : products.length === 0 ? (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0, y: 20 }}
@@ -421,18 +341,18 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
                   exit={{ opacity: 0 }}
                   className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6"
                 >
-                  {state.products.map((product, idx) => (
+                  {products.map((product, idx) => (
                     <ProductCard key={product.id} product={product} idx={idx} />
                   ))}
                 </motion.ul>
               )}
             </AnimatePresence>
 
-            {!state.isLoading && state.totalPages > 1 && (
+            {!isLoading && totalPages > 1 && (
               <Pagination
                 count={page}
                 setCount={setPageAdapter}
-                totalPages={state.totalPages}
+                totalPages={totalPages}
                 onPageChange={() => {}}
               />
             )}
@@ -443,10 +363,10 @@ function ShoppingListContent({ styles }: ShoppingListProps) {
   );
 }
 
-export function ShoppingList(props: ShoppingListProps) {
+export function ShoppingList({ styles, collectionSlug }: ShoppingListProps) {
   return (
     <Suspense fallback={<ShoppingPageSkeleton />}>
-      <ShoppingListContent {...props} />
+      <ShoppingListContent styles={styles} collectionSlug={collectionSlug} />
     </Suspense>
   );
 }

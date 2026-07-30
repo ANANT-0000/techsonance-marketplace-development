@@ -119,7 +119,9 @@ export default function CustomerRegisterForm({
             }
             return;
           }
-        } catch (loginErr) {}
+        } catch (loginErr) {
+          toast.error("Auto-login failed. Please log in manually.");
+        }
 
         // Fallback if auto-login fails or behaves unexpectedly
         if (isModal && onToggleLogin) {
@@ -207,7 +209,7 @@ export default function CustomerRegisterForm({
         type="button"
         onClick={handleGoogleRegister}
         disabled={state.isGoogleLoading || state.isSubmitting}
-        className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50 text-slate-700 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm mb-6"
+        className="w-full flex items-center justify-center gap-3 bg-white border-2 border-slate-300 hover:border-slate-400 hover:bg-slate-50 hover:scale-[1.01] active:scale-[0.99] text-slate-700 py-3 rounded-xl font-semibold transition-all duration-250 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md mb-6"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
           <path
@@ -266,10 +268,10 @@ export default function CustomerRegisterForm({
                 {...register(field.id as keyof CustomerRegisterSchemaType)}
                 type={field.type}
                 placeholder={field.placeholder}
-                className={`border-2 rounded-lg px-4 py-2 text-theme-body-sm focus:outline-none focus:ring-2 transition-all ${
+                className={`border-2 rounded-xl px-4 py-2.5 text-theme-body-sm focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all duration-200 ${
                   errors[field.id as keyof CustomerRegisterSchemaType]
                     ? "border-red-400 focus:ring-red-200 bg-red-50"
-                    : "border-slate-300 focus:ring-blue-200 focus:border-blue-400"
+                    : "border-slate-300 focus:ring-blue-200 focus:border-blue-400 hover:border-slate-400"
                 }`}
                 disabled={state.isSubmitting || state.isGoogleLoading}
               />
@@ -303,7 +305,7 @@ export default function CustomerRegisterForm({
               type="checkbox"
               id="terms_accepted"
               {...register("terms_accepted")}
-              className="w-4.5 h-4.5 rounded-sm border-2 border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200 transition-all cursor-pointer"
+              className="w-5 h-5 rounded-md border-2 border-slate-300 text-blue-600 focus:ring-2 focus:ring-blue-200 focus:ring-offset-1 transition-all cursor-pointer hover:border-slate-400"
               disabled={state.isSubmitting || state.isGoogleLoading}
             />
             <span className="text-theme-body-sm text-slate-600">
@@ -333,7 +335,7 @@ export default function CustomerRegisterForm({
         <button
           type="submit"
           disabled={state.isSubmitting || state.isGoogleLoading}
-          className="w-full font-bold py-3 mt-2 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white disabled:from-blue-400 disabled:to-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="w-full font-bold py-3 mt-2 rounded-xl transition-all duration-250 shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] disabled:scale-100 disabled:shadow-none bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white disabled:from-blue-400 disabled:to-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {state.isSubmitting ? (
             <>

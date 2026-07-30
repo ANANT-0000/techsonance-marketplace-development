@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { handleDeletePermission } from "@/utils/adminApiClients";
-import { PERMISSIONS_TEXT } from "@/constants/adminText";
+import { PERMISSIONS_TEXT } from "@/constants";
 
 interface Permission {
   id: string;

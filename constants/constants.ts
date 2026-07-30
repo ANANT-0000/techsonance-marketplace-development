@@ -39,6 +39,9 @@ export const RAZORPAY_MERCHANT_NAME = "Techsonance Marketplace";
 export const RAZORPAY_PAYMENT_DESCRIPTION = "Secure Order Payment";
 export const VEDNOR_LOGIN_PATH = "/vendor/login";
 export const VEDNOR_REGISTER_PATH = "/vendor/register";
+export const VENDOR_CREATE_CATEGORY_PATH = "/vendor/products/categories?create=true";
+export const VENDOR_CREATE_TAX_PATH = "/vendor/finances/tax-rates?create=true";
+export const VENDOR_CREATE_WAREHOUSE_PATH = "/vendor/products/warehouse?create=true";
 
 export const ADMIN_LOGIN_PATH = "/admin/login";
 export const ADMIN_REGISTER_PATH = "/admin/register";

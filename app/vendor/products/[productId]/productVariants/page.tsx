@@ -19,6 +19,7 @@ import {
 } from "@/utils/vendorApiClient";
 import { DeleteBtn } from "@/components/vendor/DeleteBtn";
 import { VariantImgGrid } from "@/components/vendor/VariantImgGrid";
+import { SessionErrorCard } from "@/components/vendor/SessionErrorCard";
 import { ProductImage, ProductVariantStatus } from "@/utils/Types";
 import { formatCurrency } from "@/lib/utils";
 import { StatusConfirmationModal } from "@/components/common/StatusConfirmationModal";
@@ -123,9 +124,6 @@ export default function VariantListingPage() {
   const vendorId = (user && "vendor_id" in user ? user.vendor_id : "") ?? "";
 
   const token = authToken();
-  if (!token) {
-    redirect(VEDNOR_LOGIN_PATH);
-  }
 
   const [state, dispatch] = useReducer(variantListingReducer, initialState);
   const { variants, status, isActive, loading, showModal, selectedVariantId } =
@@ -133,7 +131,7 @@ export default function VariantListingPage() {
 
   useEffect(() => {
     if (!token || !companyId) {
-      redirect(VEDNOR_LOGIN_PATH);
+      return;
     }
     dispatch({ type: VariantListingActionType.SET_LOADING, payload: true });
     fetchProductVariants(productId, token, companyId)
@@ -202,50 +200,54 @@ export default function VariantListingPage() {
     }
   };
 
+  if (!token || !companyId) {
+    return <SessionErrorCard />;
+  }
+
   return (
     <motion.main
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="min-h-screen max-h-screen overflow-y-scroll w-full px-2 pb-10 pt-2 "
+      className="min-h-screen max-h-screen overflow-y-auto w-full px-4 sm:px-6 lg:px-8 pb-20 pt-6 bg-slate-50/30"
     >
-      <div className="mx-auto  space-y-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      <div className="mx-auto space-y-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex items-start sm:items-center gap-5">
             <Link
               href={`/vendor/products`}
-              className="p-2.5 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-100 hover:text-slate-800 transition shadow-sm"
+              className="p-3 bg-white border border-slate-200 text-slate-500 rounded-2xl hover:bg-slate-50 hover:text-slate-800 transition-all shadow-sm active:scale-95"
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={20} />
             </Link>
             <div>
-              <h1 className="text-theme-h4 font-bold text-slate-900 tracking-tight">
+              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
                 {PRODUCT_VARIANTS_TEXT.TITLE}
               </h1>
-              <p className="text-theme-body-sm text-slate-500 mt-0.5">
+              <p className="text-theme-body text-slate-500 mt-1">
                 {PRODUCT_VARIANTS_TEXT.SUBTITLE}
               </p>
             </div>
           </div>
-          <span className="flex gap-4 justify-between">
+          <div className="flex flex-wrap gap-3">
             <Link
               href={`/vendor/products/productUpdateForm/${productId}`}
-              className="flex items-center gap-2 bg-blue-600 text-white text-theme-body-sm font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 active:scale-95 transition shadow-md shadow-blue-200"
+              className="flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 text-theme-body-sm font-semibold py-2.5 px-5 rounded-2xl hover:bg-slate-50 active:scale-95 transition-all shadow-sm"
             >
               <Edit size={16} />
               {PRODUCT_VARIANTS_TEXT.BTN_EDIT_PRODUCT}
             </Link>
             <Link
               href={`/vendor/products/variantForm/${productId}`}
-              className="flex items-center gap-2 bg-blue-600 text-white text-theme-body-sm font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 active:scale-95 transition shadow-md shadow-blue-200"
+              className="flex items-center justify-center gap-2 bg-slate-900 text-white text-theme-body-sm font-semibold py-2.5 px-5 rounded-2xl hover:bg-slate-800 active:scale-95 transition-all shadow-sm shadow-slate-900/20"
             >
               <Plus size={16} />
               {PRODUCT_VARIANTS_TEXT.BTN_ADD_VARIANT}
             </Link>
-          </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 bg-white w-fit px-4 py-2 rounded-xl border border-slate-100 shadow-sm">
           <Layers size={16} className="text-indigo-400" />
           <span className="text-theme-body-sm font-semibold text-slate-600">
             {variants && variants.length}
@@ -256,36 +258,36 @@ export default function VariantListingPage() {
         </div>
 
         {state.loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            <Skeleton className="w-full h-84" />
-            <Skeleton className="w-full h-84" />
-            <Skeleton className="w-full h-84" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Skeleton className="w-full h-96 rounded-3xl" />
+            <Skeleton className="w-full h-96 rounded-3xl" />
+            <Skeleton className="w-full h-96 rounded-3xl" />
           </div>
         ) : variants && variants.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-            className="bg-white border border-slate-100/80 rounded-3xl p-16 text-center flex flex-col items-center justify-center shadow-[0_4px_24px_rgb(0,0,0,0.02)]"
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="bg-white border border-slate-100 rounded-3xl p-16 text-center flex flex-col items-center justify-center shadow-sm"
           >
-            <div className="w-20 h-20 rounded-2xl bg-slate-50/80 flex items-center justify-center mb-5 shadow-sm border border-slate-100/50">
-              <Package size={36} className="text-slate-300" />
+            <div className="w-24 h-24 rounded-3xl bg-slate-50 flex items-center justify-center mb-6 shadow-sm border border-slate-100">
+              <Package size={40} className="text-slate-300" strokeWidth={1.5} />
             </div>
-            <h3 className="text-theme-h6 font-semibold text-slate-700">
+            <h3 className="text-theme-h5 font-semibold text-slate-800 tracking-tight">
               {PRODUCT_VARIANTS_TEXT.EMPTY.TITLE}
             </h3>
-            <p className="text-slate-400 text-theme-body-sm mt-1 mb-6">
+            <p className="text-slate-500 text-theme-body mt-2 mb-8 max-w-md mx-auto leading-relaxed">
               {PRODUCT_VARIANTS_TEXT.EMPTY.DESC}
             </p>
             <Link
               href={`/vendor/products/variantForm/${productId}`}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white text-theme-body-sm font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 hover:-translate-y-0.5 transition-all shadow-md shadow-blue-200"
+              className="inline-flex items-center justify-center gap-2 bg-slate-900 text-white text-theme-body-sm font-semibold py-3 px-6 rounded-xl hover:bg-slate-800 active:scale-95 transition-all shadow-sm shadow-slate-900/10"
             >
-              <Plus size={15} /> {PRODUCT_VARIANTS_TEXT.EMPTY.BTN_CREATE}
+              <Plus size={18} /> {PRODUCT_VARIANTS_TEXT.EMPTY.BTN_CREATE}
             </Link>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {variants &&
               variants.length > 0 &&
               variants.map((variant, index) => (
@@ -298,50 +300,53 @@ export default function VariantListingPage() {
                     ease: "easeOut",
                   }}
                   key={variant.id}
-                  className="bg-white border border-slate-100/80 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgb(0,0,0,0.02)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-0.5 transition-all duration-200 flex flex-col"
+                  className="bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col group"
                 >
-                  {variant.images && variant.images.length > 0 && (
-                    <VariantImgGrid variantImages={variant?.images} />
-                  )}
+                  <div className="p-1">
+                    {variant.images && variant.images.length > 0 && (
+                      <VariantImgGrid variantImages={variant?.images} />
+                    )}
+                  </div>
 
                   {/* ── CARD BODY ── */}
-                  <div className="p-4 flex flex-col gap-3 flex-1">
+                  <div className="p-5 flex flex-col gap-4 flex-1">
                     {/* SKU + Status row */}
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-theme-tiny font-semibold text-slate-400 uppercase tracking-widest">
+                        <p className="text-theme-tiny font-semibold text-slate-400 uppercase tracking-widest mb-1">
                           {PRODUCT_VARIANTS_TEXT.CARD.SKU}
                         </p>
-                        <p className="text-theme-body-sm font-bold text-slate-800 font-mono mt-0.5">
+                        <p className="text-theme-body font-bold text-slate-800 font-mono bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 w-fit">
                           {variant.sku || "—"}
                         </p>
                       </div>
 
                       {/* Status */}
                       <span
-                        className={`inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-theme-caption font-semibold border ${
+                        className={`inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-theme-tiny font-bold uppercase tracking-wide border ${
                           variant.status === ProductVariantStatus.ACTIVE
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : "bg-gray-100 text-gray-500 border-gray-200"
+                            : "bg-slate-50 text-slate-500 border-slate-200"
                         }`}
                       >
+                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-80" />
                         {variant.status}
                       </span>
                     </div>
 
                     {variant.attributes.length > 0 && (
                       <div>
-                        <p className="text-theme-body-sm font-semibold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                          <Tag size={10} />{" "}
+                        <p className="text-theme-tiny font-semibold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                          <Tag size={12} />{" "}
                           {PRODUCT_VARIANTS_TEXT.CARD.ATTRIBUTES}
                         </p>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-2">
                           {variant.attributes.map((attr, idx) => (
                             <div
                               key={idx}
-                              className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 text-indigo-700 text-theme-body-sm  font-medium px-2 py-1 rounded-lg"
+                              className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 text-slate-700 text-theme-body-sm font-medium px-2.5 py-1.5 rounded-xl"
                             >
-                              <span className="text-indigo-400 font-semibold">
+                              <span className="text-slate-400 font-semibold">
                                 {attr.name}:
                               </span>
                               <span>{attr.value}</span>
@@ -351,26 +356,25 @@ export default function VariantListingPage() {
                       </div>
                     )}
 
-                    <div className="border-t border-slate-100" />
+                    <div className="border-t border-slate-100 my-1" />
 
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-theme-tiny font-semibold text-slate-400 uppercase tracking-widest">
+                        <p className="text-theme-tiny font-semibold text-slate-400 uppercase tracking-widest mb-1">
                           {PRODUCT_VARIANTS_TEXT.CARD.PRICE}
                         </p>
-                        <p className="text-theme-h6 font-bold text-slate-900 mt-0.5">
+                        <p className="text-theme-h5 font-bold text-slate-900 tracking-tight">
                           ₹{formatCurrency(variant.price)}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex gap-4">
-                      {/* <DeleteBtn id={variant.id} style="mt-auto flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 text-theme-body-sm font-semibold hover:border-red-400 hover:text-red-600 hover:bg-red-50 active:scale-95 transition-all" toDelete="VARIANT" vendorId={vendorId} variantId={variant.id} /> */}
+                    <div className="flex gap-3 mt-auto pt-2">
                       <Link
                         href={`/vendor/products/variantUpdateForm/${variant.id}`}
-                        className="mt-auto flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 text-theme-body-sm font-semibold hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border border-slate-200 text-slate-600 text-theme-body-sm font-semibold hover:border-slate-300 hover:text-slate-900 hover:bg-slate-50 active:scale-95 transition-all duration-200 ease-out"
                       >
-                        <Edit size={14} />
+                        <Edit size={16} />
                         {PRODUCT_VARIANTS_TEXT.CARD.BTN_EDIT}
                       </Link>
                       <button
@@ -381,17 +385,17 @@ export default function VariantListingPage() {
                           )
                         }
                         disabled={loading}
-                        className={`flex items-center gap-1.5 py-2.5 px-4 rounded-xl text-theme-caption font-semibold border transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl text-theme-body-sm font-semibold border transition-all duration-200 ease-out cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
                     ${
                       variant.status === ProductVariantStatus.ACTIVE
                         ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300"
-                        : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200 hover:border-gray-300"
+                        : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
                     }`}
                       >
                         {variant.status === ProductVariantStatus.ACTIVE ? (
-                          <ToggleRight />
+                          <ToggleRight size={18} />
                         ) : (
-                          <ToggleLeft />
+                          <ToggleLeft size={18} />
                         )}
 
                         {loading

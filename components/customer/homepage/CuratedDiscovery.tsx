@@ -78,9 +78,8 @@ export function CuratedDiscovery({
       direction === "left" ? scrollLeft - offset : scrollLeft + offset;
     scrollRef.current.scrollTo({ left: target, behavior: "smooth" });
   };
-  if (!products || products.length == 0) {
-    return null;
-  }
+  // Note: empty state is handled inside the render below (styled UI, not null)
+
   return (
     <section
       className="curated_desktop py-16 px-6 lg:px-16 xl:px-24"
@@ -133,13 +132,19 @@ export function CuratedDiscovery({
               <SkeletonCard key={idx} />
             ))
           ) : products.length === 0 ? (
-            <div className="w-full text-center py-12 text-slate-450 bg-white border border-dashed border-slate-200 rounded-3xl">
-              <p className="text-theme-body-sm">
-                {CURATED_DISCOVERY_TEXT.NO_ITEMS}
+            <div className="w-full text-center py-16 px-6 bg-white border border-slate-200 border-dashed rounded-3xl flex flex-col items-center justify-center gap-4 opacity-80 shadow-sm max-w-2xl mx-auto my-4">
+              <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+                <span className="text-3xl text-slate-300">✦</span>
+              </div>
+              <h3 className="text-theme-h5 font-bold text-slate-900">
+                {CURATED_DISCOVERY_TEXT.CURATION_IN_PROGRESS}
+              </h3>
+              <p className="text-theme-body-sm text-slate-500 max-w-sm leading-relaxed">
+                {CURATED_DISCOVERY_TEXT.CURATION_DESC}
               </p>
               <Link
                 href="/store"
-                className="text-theme-caption text-theme-primary font-bold hover:underline mt-2 inline-block"
+                className="mt-4 bg-slate-900 text-white hover:bg-slate-800 transition-colors px-6 py-2.5 text-theme-xxs font-bold uppercase tracking-widest rounded-xl"
               >
                 {CURATED_DISCOVERY_TEXT.VIEW_ALL}
               </Link>

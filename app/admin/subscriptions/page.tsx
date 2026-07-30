@@ -18,7 +18,7 @@ import {
   updateVendorSubscription,
   fetchLiveSubscriptionPlans,
 } from "@/utils/adminApiClients";
-import { SUBSCRIBATION_TEXT } from "@/constants/adminText";
+import { SUBSCRIBATION_TEXT } from "@/constants";
 import AxiosAPI from "@/lib/axios";
 import { toDatetimeLocal } from "@/lib/utils";
 
@@ -303,6 +303,10 @@ export default function SubscriptionsWorkspace() {
     publish,
     unpublish,
     createPlan,
+    conflictKeys,
+    resolveConflict,
+    publishErrors,
+    clearPublishError,
   } = useCmsSubscriptionPlans();
 
   const [state, dispatch] = useReducer(Reducer, INITIAL_STATE);
@@ -511,7 +515,7 @@ export default function SubscriptionsWorkspace() {
             headers: {
               "x-suppress-redirect": "true",
             },
-          }
+          },
         );
         dispatch({
           type: ACTION.SET_QUOTA_LIMITS,
@@ -537,7 +541,7 @@ export default function SubscriptionsWorkspace() {
           headers: {
             "x-suppress-redirect": "true",
           },
-        }
+        },
       );
       dispatch({
         type: ACTION.SET_VENDOR_QUOTA_USAGE,
@@ -570,7 +574,7 @@ export default function SubscriptionsWorkspace() {
           headers: {
             "x-suppress-redirect": "true",
           },
-        }
+        },
       );
       toast.success(`Quota limit saved for "${limit.feature_key}".`);
     } catch (err: any) {
@@ -677,6 +681,10 @@ export default function SubscriptionsWorkspace() {
           handlePublishPlan={handlePublishPlan}
           handleUnpublishPlan={handleUnpublishPlan}
           handleCreatePlan={handleCreatePlan}
+          conflictKeys={conflictKeys}
+          resolveConflict={resolveConflict}
+          publishErrors={publishErrors}
+          clearPublishError={clearPublishError}
           ACTION={ACTION}
         />
       )}
@@ -720,9 +728,7 @@ export default function SubscriptionsWorkspace() {
       {/* ────────────────────────────────────────────────────────────────────── */}
       {/* SECTION 4: FEATURES CATALOG CRUD */}
       {/* ────────────────────────────────────────────────────────────────────── */}
-      {activeTab === "catalog" && (
-        <CatalogTab token={token} />
-      )}
+      {activeTab === "catalog" && <CatalogTab token={token} />}
 
       {/* ────────────────────────────────────────────────────────────────────── */}
       {/* EDIT VENDOR DIALOG DIALOG MODAL */}

@@ -26,6 +26,8 @@ import {
   NavMenuLogoAlignment,
   NavMenuPosition,
   NavLayoutType,
+  AnnouncementItem,
+  CategoryNode,
 } from "@/utils/Types";
 import { AxiosResponse } from "axios";
 
@@ -59,6 +61,11 @@ interface NavbarApiSettings {
   show_account?: boolean;
   show_wishlist?: boolean;
   show_cart?: boolean;
+  announcement_visible?: boolean;
+  announcement_items_left?: AnnouncementItem[];
+  announcement_items_right?: AnnouncementItem[];
+  announcement_bg_color?: string;
+  announcement_text_color?: string;
 }
 
 interface NavItemMetaApi {
@@ -97,7 +104,7 @@ interface NavItemApi {
   meta: NavItemMetaApi;
   layout_type?: NavLayoutType;
   root_category_id?: string | null;
-  categories?: any[];
+  categories?: CategoryNode[];
   megaMenuColumns: {
     id: string;
     label: string;
@@ -181,6 +188,18 @@ function transformApiResponse(data: NavbarApiResponse): {
       showAccount: s.show_account ?? true,
       showWishlist: s.show_wishlist ?? true,
       showCart: s.show_cart ?? true,
+    },
+    announcement: {
+      isVisible: s.announcement_visible ?? false,
+      itemsLeft: s.announcement_items_left || [{ id: "def-left", type: "text", label: "Free shipping on all orders over $50 | Easy returns", visible_on: ["desktop", "mobile"], is_highlighted: false }],
+      itemsRight: s.announcement_items_right || [
+        { id: "def-r1", type: "link", label: "Help & Support", target_route: "help", visible_on: ["desktop", "mobile"] },
+        { id: "def-r2", type: "link", label: "Track Order", target_route: "track-order", visible_on: ["desktop", "mobile"] },
+        { id: "def-r3", type: "feature", label: "USD", feature_key: "currency_selector", visible_on: ["desktop", "mobile"] },
+        { id: "def-r4", type: "feature", label: "EN", feature_key: "language_selector", visible_on: ["desktop", "mobile"] },
+      ],
+      bgColor: s.announcement_bg_color || "#f8f9fa",
+      textColor: s.announcement_text_color || "#475569",
     },
     navigationItems: data.navigationItems.map((item) => ({
       id: item.id,
@@ -281,8 +300,9 @@ function navbarReducer(state: NavbarState, action: NavbarAction): NavbarState {
       return {
         ...state,
         status: NavbarFetchStatus.ERROR,
-        menuLinks: [],
-        l1Config: state.l1Config ? { ...state.l1Config, navigationItems: [] } : null,
+        menuLinks: CMS_L1_NAV_PAYLOAD.navigationItems,
+        l1Config: CMS_L1_NAV_PAYLOAD,
+        l2Config: CMS_L2_MEGA_PAYLOAD,
       };
     case NavbarActionType.SET_LANG:
       return {
@@ -299,9 +319,9 @@ function navbarReducer(state: NavbarState, action: NavbarAction): NavbarState {
 const initialNavbarState: NavbarState = {
   status: NavbarFetchStatus.IDLE,
   lang: NavbarConfig.DEFAULT_LOCALE,
-  l1Config: null,
-  l2Config: null,
-  menuLinks: [],
+  l1Config: CMS_L1_NAV_PAYLOAD,
+  l2Config: CMS_L2_MEGA_PAYLOAD,
+  menuLinks: CMS_L1_NAV_PAYLOAD.navigationItems,
   navbarConfig: null,
 };
 
@@ -350,7 +370,7 @@ export function useNavbarData() {
         });
         const rawData = res.data;
         const data: NavbarApiResponse = rawData?.data ?? rawData;
-        if (data?.navigationItems) {
+        if (data?.navigationItems && data.navigationItems.length > 0) {
           const { l1, l2 } = transformApiResponse(data);
           dispatch({
             type: NavbarActionType.FETCH_SUCCESS,
@@ -358,6 +378,7 @@ export function useNavbarData() {
           });
           cacheData(cacheKey, { l1, l2, raw: data });
         } else {
+          // If the backend returns empty or no data, treat as error to use default nav
           dispatch({ type: NavbarActionType.FETCH_ERROR });
         }
       } catch (error) {

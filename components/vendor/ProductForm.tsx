@@ -1,43 +1,44 @@
 "use client";
 import { getClientCompanyId } from "@/utils/getCompanyId";
-import { companyDomain } from "@/config";
-import {
-  BASE_API_URL,
-  ORGANIZATION_TAXATION_OPTIONS,
-  PRODUCT_FORM_FIELDS,
-  PRODUCT_FORM_PRICING_FIELDS,
-} from "@/constants";
+
 import { PRODUCT_FORM_TEXT } from "@/constants/vendorText";
 import { useAppSelector } from "@/hooks/reduxHooks";
-import { usePreviewUrls } from "@/lib/clientUtils";
+import {
+  UploadStatus,
+  useImageUploadManager,
+  ManagedImage,
+} from "@/hooks/useImageUploadManager";
+
 import { authToken } from "@/utils/authToken";
 import { generateSKU } from "@/utils/generateSku";
 import {
   FileOrProductImage,
   ProductImage,
   ProductStatus,
-  VendorUser,
+  CreateProductPayload,
 } from "@/utils/Types";
 import {
   ProductFormInput,
   ProductFormOutput,
-  ProductFormValuesType,
   productSchema,
 } from "@/utils/validation";
-import {
-  createInventoryRecord,
-  createProduct,
-  updateProduct,
-} from "@/utils/vendorApiClient";
-import { zodResolver } from "@hookform/resolvers/zod/dist/zod.js";
+import { createProduct, updateProduct } from "@/utils/vendorApiClient";
 
-import { ArrowLeft } from "lucide-react";
-import { DynamicIcon } from "lucide-react/dynamic";
+import { useEntitlementUsage } from "@/hooks/useEntitlementUsage";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { Info, Loader2 } from "lucide-react";
 import { redirect, useRouter } from "next/navigation";
-import { useEffect, useCallback, useState, use } from "react";
-import { FieldErrors, useFieldArray, useForm } from "react-hook-form";
-import { VEDNOR_LOGIN_PATH, VEDNOR_REGISTER_PATH } from "@/constants";
+import { useEffect, useCallback, useState, use, useMemo } from "react";
+import { useFieldArray, useForm, FormProvider } from "react-hook-form";
 import toast from "react-hot-toast";
+import { GeneralInformationSection } from "./product-form/GeneralInformationSection";
+import { PricingInventorySection } from "./product-form/PricingInventorySection";
+import { LogisticsDimensionsSection } from "./product-form/LogisticsDimensionsSection";
+import { MediaAssetsSection } from "./product-form/MediaAssetsSection";
+
+import { RootState } from "@/lib/store";
+import { CategoryTaxationSection } from "./product-form/CategoryTaxationSection";
 
 // Replaced constants
 export function ProductForm({
@@ -47,27 +48,35 @@ export function ProductForm({
   vendorId,
   existingData,
   productId,
+  optionsLoaded = false,
 }: {
   categoryOptions: { value: string; label: string }[];
-  warehouseOptions?: { value: string; label: string }[];
+  warehouseOptions: { value: string; label: string }[];
   taxSlabsOptions: { value: string; label: string }[];
   vendorId: string;
-  existingData?: Partial<ProductFormInput | ProductFormOutput>;
+  existingData?: Partial<ProductFormInput> & {
+    variantId?: string;
+    productMedia?: FileOrProductImage[];
+    featureMedia?: FileOrProductImage[];
+  };
   productId?: string;
+  /** Set to true only after all option fetches (categories, warehouse, tax) have resolved.
+   *  Prevents the "missing options" banner from showing during initial page load. */
+  optionsLoaded?: boolean;
 }) {
-  const companyId = getClientCompanyId();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setCompanyId(getClientCompanyId());
+    setToken(authToken());
+    setIsMounted(true);
+  }, []);
 
   const isUpdate = Boolean(productId && existingData);
 
-  const {
-    control,
-    reset,
-    watch,
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors, isSubmitting },
-  } = useForm({
+  const methods = useForm({
     resolver: zodResolver(productSchema),
     mode: "onChange",
     defaultValues: {
@@ -76,12 +85,15 @@ export function ProductForm({
       features: [{ title: "", description: "" }],
       attributes: [{ name: "", value: "" }],
       basePrice: "",
-      discountPercent: "",
+      compareAtPrice: "",
+      saleStartsAt: "",
+      saleEndsAt: "",
       stocks: "",
       sku: "",
       productMedia: [],
       featureMedia: [],
-      category: "",
+      categories: [],
+      primaryCategory: "",
       status: ProductStatus.INACTIVE,
       warehouseId: "",
       taxSlabId: "",
@@ -91,52 +103,187 @@ export function ProductForm({
       height_cm: "",
     },
   });
+  const {
+    control,
+    reset,
+    watch,
+    register,
+    handleSubmit,
+    setValue,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = methods;
   const productName = watch("productName");
   const attributes = watch("attributes"); // Example: { Color: 'Black', Capacity: '256GB' }
-  const categoryName = watch("category");
-  // Auto-generate SKU when variant details change, ONLY if the user hasn't manually typed a custom SKU
-  const [isAutoGenerating, setIsAutoGenerating] = useState(true);
-  useEffect(() => {
-    if (isAutoGenerating && productName) {
-      const newSku = generateSKU({
-        productName: productName, // Passed from parent Product
-        categoryName: categoryName,
-        attributes: attributes,
-      });
+  const categoryName = watch("categories");
 
-      setValue("sku", newSku, { shouldValidate: true });
+  const basePriceVal = watch("basePrice");
+  const compareAtPriceVal = watch("compareAtPrice");
+  const saleStartsAtVal = watch("saleStartsAt");
+  const saleEndsAtVal = watch("saleEndsAt");
+
+  const computedPrice = useMemo(() => {
+    const bp = Number(basePriceVal) || 0;
+    const cp = Number(compareAtPriceVal) || 0;
+    const now = new Date();
+
+    let isSaleActive = false;
+    if (cp > bp) {
+      if (!saleStartsAtVal && !saleEndsAtVal) {
+        isSaleActive = true;
+      } else {
+        const start = saleStartsAtVal ? new Date(saleStartsAtVal) : new Date(0);
+        const end = saleEndsAtVal
+          ? new Date(saleEndsAtVal)
+          : new Date(8640000000000000);
+        isSaleActive = now >= start && now <= end;
+      }
     }
+
+    if (isSaleActive) {
+      const discountAmount = cp - bp;
+      const discountPercent = Math.round((discountAmount / cp) * 100);
+      return {
+        price: bp,
+        compareAtPrice: cp,
+        discountPercent,
+        isSaleActive: true,
+      };
+    }
+    const finalPrice = cp > bp ? cp : bp;
+    return {
+      price: finalPrice,
+      compareAtPrice: null,
+      discountPercent: 0,
+      isSaleActive: false,
+    };
+  }, [basePriceVal, compareAtPriceVal, saleStartsAtVal, saleEndsAtVal]);
+
+  // Auto-generate SKU when variant details change, ONLY if the user hasn't manually typed a custom SKU
+  const [isAutoGenerating, setIsAutoGenerating] = useState(!isUpdate);
+
+  useEffect(() => {
+    try {
+      if (isAutoGenerating && productName) {
+        const newSku = generateSKU({
+          productName: productName, // Passed from parent Product
+          categoryName: Array.isArray(categoryName)
+            ? categoryName[0] || ""
+            : categoryName || "",
+          attributes: attributes,
+        });
+
+        setValue("sku", newSku, { shouldValidate: true });
+      }
+    } catch (err) {}
   }, [isAutoGenerating, attributes, productName, categoryName, setValue]);
   const formPageLabels = isUpdate
     ? PRODUCT_FORM_TEXT.PAGE.UPDATE
     : PRODUCT_FORM_TEXT.PAGE.CREATE;
-  const {
-    fields: featureFields,
-    append: appendFeature,
-    remove: removeFeature,
-  } = useFieldArray({ control, name: "features" });
-  const {
-    fields: attributeFields,
-    append: appendAttribute,
-    remove: removeAttribute,
-  } = useFieldArray({ control, name: "attributes" });
-  const { user } = useAppSelector((state) => state.auth);
+  const { user } = useAppSelector((state: RootState) => state.auth);
   const router = useRouter();
+  const { data: usage, loading: usageLoading } = useEntitlementUsage(
+    "max_products",
+    companyId || "",
+  );
 
-  const [productFiles, setProductFiles] = useState<FileOrProductImage[]>([]);
-  const [featureFiles, setFeatureFiles] = useState<FileOrProductImage[]>([]);
+  const hasMissingOptions =
+    !categoryOptions?.length ||
+    !taxSlabsOptions?.length ||
+    !warehouseOptions?.length;
+
+  // token is now tracked in state
+
+  const productUpload = useImageUploadManager({
+    token,
+    limit: 1,
+    maxSizeMB: 0.4,
+    maxTotalSizeMB: 20,
+  });
+  const featureUpload = useImageUploadManager({
+    token,
+    limit: 5,
+    maxSizeMB: 0.4,
+    maxTotalSizeMB: 20,
+  });
+
+  useEffect(() => {
+    if (!isUpdate) {
+      const draft = localStorage.getItem("productFormDraft");
+      if (draft) {
+        try {
+          const parsedDraft = JSON.parse(draft);
+          reset(parsedDraft);
+
+          if (parsedDraft.productMedia) {
+            productUpload.setImages(
+              parsedDraft.productMedia.map((item: unknown) => {
+                const img = item as Partial<ProductImage> & { url?: string };
+                return {
+                  id: img.id || `temp-${Date.now()}-${Math.random()}`,
+                  previewUrl: img.image_url || img.url || "",
+                  cloudUrl: img.image_url || img.url || "",
+                  status: UploadStatus.SUCCESS,
+                  progress: 100,
+                };
+              }),
+            );
+          }
+          if (parsedDraft.featureMedia) {
+            featureUpload.setImages(
+              parsedDraft.featureMedia.map((item: unknown) => {
+                const img = item as Partial<ProductImage> & { url?: string };
+                return {
+                  id: img.id || `temp-${Date.now()}-${Math.random()}`,
+                  previewUrl: img.image_url || img.url || "",
+                  cloudUrl: img.image_url || img.url || "",
+                  status: UploadStatus.SUCCESS,
+                  progress: 100,
+                };
+              }),
+            );
+          }
+
+          toast.success(PRODUCT_FORM_TEXT.MESSAGES.DRAFT_LOADED);
+          localStorage.removeItem("productFormDraft");
+        } catch (error) {
+ 
+        }
+      }
+    }
+  }, [isUpdate, reset]);
+
+  const handleSaveDraftAndRedirect = (path: string) => {
+    productUpload.bypassCleanup();
+    featureUpload.bypassCleanup();
+    const currentValues = getValues();
+    localStorage.setItem("productFormDraft", JSON.stringify(currentValues));
+    toast.success(PRODUCT_FORM_TEXT.MESSAGES.DRAFT_SAVED);
+    router.push(path);
+  };
+
   const [deletedImgs, setDeletedImgs] = useState<string[]>([]);
 
-  const { getPreviewUrl, revokeAll, revokeOne } = usePreviewUrls();
-  const token = authToken();
+  // Sync state to react-hook-form
   useEffect(() => {
-    return () => revokeAll();
-  }, [revokeAll]);
+    const successImages = productUpload.images
+      .filter((img: ManagedImage) => img.status === UploadStatus.SUCCESS)
+      .map((img: ManagedImage) => ({ image_url: img.cloudUrl, id: img.id }));
+ 
+    setValue("productMedia", successImages as unknown as FileOrProductImage[], {
+      shouldDirty: true,
+    });
+  }, [productUpload.images, setValue]);
 
-  const fileStateMap = {
-    productMedia: { files: productFiles, setFiles: setProductFiles },
-    featureMedia: { files: featureFiles, setFiles: setFeatureFiles },
-  } as const;
+  useEffect(() => {
+    const successImages = featureUpload.images
+      .filter((img: ManagedImage) => img.status === UploadStatus.SUCCESS)
+      .map((img: ManagedImage) => ({ image_url: img.cloudUrl, id: img.id }));
+    
+    setValue("featureMedia", successImages as unknown as FileOrProductImage[], {
+      shouldDirty: true,
+    });
+  }, [featureUpload.images, setValue]);
 
   // Populate form when editing an existing product
   useEffect(() => {
@@ -156,13 +303,36 @@ export function ProductForm({
             value: attr.value,
           }))
         : [{ name: "", value: "" }],
-      basePrice: String(existingData.basePrice) ?? "",
-      discountPercent: String(existingData.discountPercent) ?? "",
-      stocks: String(existingData.stocks) ?? "",
+      basePrice:
+        existingData.basePrice !== undefined && existingData.basePrice !== null
+          ? String(existingData.basePrice)
+          : "",
+      compareAtPrice:
+        existingData.compareAtPrice !== undefined &&
+        existingData.compareAtPrice !== null
+          ? String(existingData.compareAtPrice)
+          : "",
+      saleStartsAt: existingData.saleStartsAt || "",
+      saleEndsAt: existingData.saleEndsAt || "",
+      stocks:
+        existingData.stocks !== undefined && existingData.stocks !== null
+          ? String(existingData.stocks)
+          : "",
       sku: existingData.sku || "",
       productMedia: [],
       featureMedia: [],
-      category: existingData.category || "",
+      categories: Array.isArray(existingData.categories)
+        ? existingData.categories
+        : existingData.categories
+          ? [existingData.categories]
+          : [],
+      // @ts-ignore
+      primaryCategory:
+        existingData.primaryCategory ||
+        (Array.isArray(existingData.categories)
+          ? existingData.categories[0]
+          : existingData.categories) ||
+        "",
       status: (existingData.status as ProductStatus) || ProductStatus.INACTIVE,
       warehouseId: existingData.warehouseId || "",
       taxSlabId: existingData.taxSlabId || "",
@@ -189,16 +359,45 @@ export function ProductForm({
     const initialFeatureFiles =
       (existingData.featureMedia as FileOrProductImage[]) || [];
 
-    setProductFiles(initialProductFiles);
-    setFeatureFiles(initialFeatureFiles);
+    productUpload.setImages(
+      initialProductFiles.map((item) => {
+        const img = item as Partial<ProductImage> & { url?: string };
+        return {
+          id: img.id || `temp-${Date.now()}-${Math.random()}`,
+          previewUrl: img.image_url || img.url || "",
+          cloudUrl: img.image_url || img.url || "",
+          status: UploadStatus.SUCCESS,
+          progress: 100,
+        };
+      }),
+    );
+    featureUpload.setImages(
+      initialFeatureFiles.map((item) => {
+        const img = item as Partial<ProductImage> & { url?: string };
+        return {
+          id: img.id || `temp-${Date.now()}-${Math.random()}`,
+          previewUrl: img.image_url || img.url || "",
+          cloudUrl: img.image_url || img.url || "",
+          status: UploadStatus.SUCCESS,
+          progress: 100,
+        };
+      }),
+    );
 
-    // Keep RHF in sync with the pre-loaded image objects
-    setValue("productMedia", initialProductFiles as any, {
-      shouldDirty: false,
-    });
-    setValue("featureMedia", initialFeatureFiles as any, {
-      shouldDirty: false,
-    });
+    setValue(
+      "productMedia",
+      initialProductFiles as unknown as FileOrProductImage[],
+      {
+        shouldDirty: false,
+      },
+    );
+    setValue(
+      "featureMedia",
+      initialFeatureFiles as unknown as FileOrProductImage[],
+      {
+        shouldDirty: false,
+      },
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, existingData]);
 
@@ -210,10 +409,17 @@ export function ProductForm({
   }, [existingData?.warehouseId, warehouseOptions, setValue]);
 
   useEffect(() => {
-    if (existingData?.category && categoryOptions?.length) {
-      setValue("category", existingData.category);
+    if (existingData?.categories && categoryOptions?.length) {
+      const cats = Array.isArray(existingData.categories)
+        ? existingData.categories
+        : [existingData.categories];
+      setValue("categories", cats);
+      // @ts-ignore
+      if (existingData.primaryCategory)
+        setValue("primaryCategory", existingData.primaryCategory);
+      else setValue("primaryCategory", cats[0] || "");
     }
-  }, [existingData?.category, categoryOptions, setValue]);
+  }, [existingData?.categories, categoryOptions, setValue]);
 
   useEffect(() => {
     if (existingData?.taxSlabId && taxSlabsOptions?.length) {
@@ -221,126 +427,195 @@ export function ProductForm({
     }
   }, [existingData?.taxSlabId, taxSlabsOptions, setValue]);
 
-  // ── File handlers ──
-  const handleFileSelect = useCallback(
-    (
-      e: React.ChangeEvent<HTMLInputElement>,
-      currentFiles: FileOrProductImage[],
-      setFiles: React.Dispatch<React.SetStateAction<FileOrProductImage[]>>,
-      fieldName: keyof ProductFormValuesType,
-    ) => {
-      if (!e.target.files) return;
-      const updated = [...currentFiles, ...Array.from(e.target.files)];
-      setFiles(updated);
-      setValue(fieldName, updated as any, { shouldDirty: true });
-      e.target.value = "";
-    },
-    [setValue],
-  );
+  const MAX_FILE_SIZE_MB = 0.4;
+  const MAX_TOTAL_SIZE_MB = 20;
+  const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+  const MAX_TOTAL_SIZE_BYTES = MAX_TOTAL_SIZE_MB * 1024 * 1024;
 
-  const handleFileRemove = useCallback(
-    (
-      index: number,
-      currentFiles: FileOrProductImage[],
-      setFiles: React.Dispatch<React.SetStateAction<FileOrProductImage[]>>,
-      fieldName: keyof ProductFormValuesType,
-      imgId?: string,
-    ) => {
-      const removed = currentFiles[index];
-      revokeOne(removed);
-      const updated = currentFiles.filter((_, i) => i !== index);
-      setFiles(updated);
-      setValue(fieldName, updated as any, { shouldDirty: true });
-      if (imgId) setDeletedImgs((prev) => [...prev, imgId]);
-    },
-    [setValue, revokeOne],
-  );
+  // ── File handlers ──
+  // Image handlers are now managed by useImageUploadManager
 
   // ── Submit ──
 
-  const onSubmit = async (data: ProductFormValuesType) => {
+  const onSubmit = async (data: ProductFormOutput) => {
     if (!token || !companyId) {
       toast.error(PRODUCT_FORM_TEXT.ERRORS.SESSION_EXPIRED_SAVE, {
-        icon: '🔒',
+        icon: "🔒",
         style: {
-          borderRadius: '10px',
-          background: '#333',
-          color: '#fff',
+          borderRadius: "10px",
+          background: "#333",
+          color: "#fff",
         },
       });
       return;
     }
     // On create, both image sets must have at least one file
-    if (!isUpdate && (productFiles.length === 0 || featureFiles.length === 0)) {
+    if (
+      !isUpdate &&
+      (productUpload.images.filter((img) => img.status === UploadStatus.SUCCESS)
+        .length === 0 ||
+        featureUpload.images.filter(
+          (img) => img.status === UploadStatus.SUCCESS,
+        ).length === 0)
+    ) {
+      toast.error(
+        "Please upload at least one product image and one feature image.",
+        {
+          icon: "🖼️",
+          style: { borderRadius: "10px", background: "#333", color: "#fff" },
+        },
+      );
       return;
     }
 
     if (!user || ("vendor_id" in user && !user.vendor_id) || !user.company_id) {
+      toast.error(
+        "Your session details are missing. Please log in again to save your product.",
+        {
+          icon: "🔒",
+          style: { borderRadius: "10px", background: "#333", color: "#fff" },
+        },
+      );
       return;
     }
 
-    const basePayload = {
-      name: data.productName,
-      description: data.description,
-      features: data.features,
-      attributes: data.attributes,
-      category_id: data.category,
-      status: data.status.toLowerCase(),
-      base_price: String(data.basePrice),
-      discount_percent:
-        data.discountPercent !== null && data.discountPercent !== undefined
-          ? String(data.discountPercent)
-          : "0",
-      stock_quantity: Number(data.stocks),
-      sku: data.sku,
-      warehouse_id: data.warehouseId,
-      tax_slab_id: data.taxSlabId,
-      variant_name: data.productName,
-      weight_kg: String(data.weight_kg),
-      length_cm: Number(data.length_cm),
-      width_cm: Number(data.width_cm),
-      height_cm: Number(data.height_cm),
+    const productUrls = productUpload.images
+      .map((f: ManagedImage) => f.cloudUrl)
+      .filter(Boolean) as string[];
+    const featureUrls = featureUpload.images
+      .map((f: ManagedImage) => f.cloudUrl)
+      .filter(Boolean) as string[];
+
+    const payload: CreateProductPayload["product_data"] = isUpdate
+      ? {
+          ...data,
+          variant_id: existingData?.variantId,
+          price: data.base_price,
+          base_price: String(data.base_price),
+          compare_at_price:
+            data.compare_at_price !== null &&
+            data.compare_at_price !== undefined
+              ? String(data.compare_at_price)
+              : null,
+          product_media: productUrls,
+          feature_media: featureUrls,
+        }
+      : {
+          ...data,
+          base_price: String(data.base_price),
+          compare_at_price:
+            data.compare_at_price !== null &&
+            data.compare_at_price !== undefined
+              ? String(data.compare_at_price)
+              : null,
+          product_media: productUrls,
+          feature_media: featureUrls,
+        };
+
+    const requestBody = {
+      product_data: payload,
+      imagesToDelete: deletedImgs.length > 0 ? deletedImgs : undefined,
     };
 
-    const payload = isUpdate
-      ? {
-          ...basePayload,
-          variant_id: existingData?.variantId,
-          price: Number(data.basePrice),
-        }
-      : basePayload;
-
-    const formData = new FormData();
-    productFiles.forEach((file) => {
-      if (file instanceof File) formData.append("product", file);
-    });
-    featureFiles.forEach((file) => {
-      if (file instanceof File) formData.append("product_spec", file);
-    });
-    formData.append("product_data", JSON.stringify(payload));
-    if (deletedImgs.length > 0) {
-      formData.append("imagesToDelete", JSON.stringify(deletedImgs));
-    }
+  
 
     try {
+      productUpload.bypassCleanup();
+      featureUpload.bypassCleanup();
       let response: {
-        ok: boolean;
+        ok?: boolean;
         status: number;
-        statusText: string;
-        data?: any;
+        statusText?: string;
+        data?: unknown;
+        code?: string;
+        reason?: string;
+        message?: string;
       };
 
       if (isUpdate) {
-        response = await updateProduct(formData, productId!, token, companyId);
+        response = (await updateProduct(
+          requestBody,
+          productId!,
+          token,
+          companyId,
+        )) as typeof response;
       } else {
-        response = await createProduct(formData, vendorId, token, companyId);
+        response = (await createProduct(
+          requestBody,
+          vendorId,
+          token,
+          companyId,
+        )) as typeof response;
       }
+      if (response.status === 413) {
+        toast.error(
+          PRODUCT_FORM_TEXT.ERRORS.PAYLOAD_TOO_LARGE(MAX_TOTAL_SIZE_MB),
+          {
+            icon: "❌",
+            style: { borderRadius: "10px", background: "#333", color: "#fff" },
+          },
+        );
+        return;
+      }
+
+      if (
+        response.status === 403 &&
+        response.code === "FEATURE_LIMIT_REACHED"
+      ) {
+        const reason = response.reason;
+        if (reason === "quota_exceeded") {
+          toast.error(
+            <span>
+              You've reached your product limit!{" "}
+              <a
+                href="/vendor/settings/billing"
+                className="underline font-bold"
+              >
+                Upgrade Plan
+              </a>
+            </span>,
+            { duration: 5000 },
+          );
+        } else if (reason === "feature_disabled") {
+          toast.error(
+            <span>
+              Products feature is not included in your plan.{" "}
+              <a
+                href="/vendor/settings/billing"
+                className="underline font-bold"
+              >
+                Upgrade Plan
+              </a>
+            </span>,
+            { duration: 5000 },
+          );
+        } else {
+          toast.error("You need an active subscription to create products.");
+        }
+        return;
+      }
+
       if (response.status !== 201 && response.status !== 200) {
+        toast.error(response.message || PRODUCT_FORM_TEXT.ERRORS.SAVE_FAILED, {
+          icon: "❌",
+          style: { borderRadius: "10px", background: "#333", color: "#fff" },
+        });
         return;
       }
       router.push("/vendor/products");
-    } catch (error) {}
+    } catch (error) {
+ 
+      toast.error(
+        PRODUCT_FORM_TEXT.ERRORS.SAVE_FAILED ||
+          PRODUCT_FORM_TEXT.ERRORS.UNEXPECTED_ERROR,
+        {
+          icon: "❌",
+          style: { borderRadius: "10px", background: "#333", color: "#fff" },
+        },
+      );
+    }
   };
+  if (!isMounted) return null;
 
   return (
     <>
@@ -351,624 +626,101 @@ export function ProductForm({
       >
         <ArrowLeft size={18} /> {PRODUCT_FORM_TEXT.ACTIONS.BACK}
       </button>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        {/* ── HEADER ── */}
-        <header className="flex flex-wrap justify-between items-center mb-8 gap-4">
-          <div>
-            <h1 className="text-theme-h4 font-bold text-slate-900">
-              {formPageLabels.headerTitle}
-            </h1>
-            <p className="text-theme-body-sm text-slate-500 mt-0.5">
-              {formPageLabels.headerDesc}
-            </p>
-          </div>
-        </header>
-
-        {/* ── 1. GENERAL INFORMATION ── */}
-        <div className="bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-3xl mb-8 overflow-hidden transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:border-slate-200">
-          <div className="px-6 py-5 border-b border-slate-100/80 bg-slate-50/30 flex items-center gap-3">
-            <DynamicIcon
-              fallback={() => <p></p>}
-              name="package"
-              size={18}
-              className="text-indigo-500"
-            />
-            <h2 className="text-theme-body font-semibold text-slate-800">
-              {PRODUCT_FORM_TEXT.SECTIONS.GENERAL}
-            </h2>
-          </div>
-          <div className="p-6 space-y-5">
-            {PRODUCT_FORM_TEXT.GENERAL_FIELDS.map((field, idx) => (
-              <div key={idx}>
-                <label className="form_label">
-                  {field.label} <span className="text-red-400">*</span>
-                </label>
-                {field.type === "textarea" ? (
-                  <textarea
-                    rows={4}
-                    className="form_input"
-                    placeholder={field.placeholder}
-                    aria-multiline={true}
-                    {...register(field.name as keyof ProductFormValuesType)}
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    className="form_input"
-                    placeholder={field.placeholder}
-                    {...register(field.name as keyof ProductFormValuesType, {
-                      required: `${field.label} is required`,
-                    })}
-                  />
-                )}
-                {errors[field.name as keyof ProductFormValuesType] && (
-                  <p className="text-red-500 text-theme-caption mt-1 flex items-center gap-1">
-                    <DynamicIcon
-                      fallback={() => <p></p>}
-                      name="alert-circle"
-                      size={12}
-                    />
-                    {
-                      errors[field.name as keyof ProductFormValuesType]
-                        ?.message as string
-                    }
-                  </p>
-                )}
-              </div>
-            ))}
-
-            {/* Features */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-theme-body-sm font-semibold text-slate-700">
-                  {PRODUCT_FORM_TEXT.SECTIONS.FEATURES}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => appendFeature({ title: "", description: "" })}
-                  className="flex items-center gap-1.5 text-theme-caption font-semibold text-blue-600 border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition"
-                >
-                  <DynamicIcon fallback={() => <p></p>} name="plus" size={14} />{" "}
-                  {PRODUCT_FORM_TEXT.ACTIONS.ADD_FEATURE}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {featureFields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="relative border border-slate-200 rounded-xl p-4 bg-slate-50 group"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => removeFeature(index)}
-                      className="absolute top-2.5 right-2.5 text-slate-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100 bg-white rounded-md p-1 border border-slate-200 shadow-sm"
-                    >
-                      <DynamicIcon
-                        fallback={() => <p></p>}
-                        name="trash-2"
-                        size={14}
-                      />
-                    </button>
-                    <div className="mb-3">
-                      <label className="block text-theme-caption font-semibold text-slate-600 mb-1">
-                        {PRODUCT_FORM_TEXT.LABELS.FEAT_TITLE}
-                      </label>
-                      <input
-                        type="text"
-                        className="form_input"
-                        placeholder={PRODUCT_FORM_TEXT.LABELS.FEAT_TITLE_PH}
-                        {...register(`features.${index}.title`, {
-                          required: PRODUCT_FORM_TEXT.ERRORS.FEAT_TITLE,
-                        })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-theme-caption font-semibold text-slate-600 mb-1">
-                        {PRODUCT_FORM_TEXT.LABELS.DETAILS}
-                      </label>
-                      <textarea
-                        rows={2}
-                        className="form_input"
-                        placeholder={PRODUCT_FORM_TEXT.LABELS.FEAT_DESC_PH}
-                        {...register(`features.${index}.description`, {
-                          required: PRODUCT_FORM_TEXT.ERRORS.FEAT_DESC,
-                        })}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Attributes */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-theme-body-sm font-semibold text-slate-700">
-                  {PRODUCT_FORM_TEXT.SECTIONS.ATTRIBUTES}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => appendAttribute({ name: "", value: "" })}
-                  className="flex items-center gap-1.5 text-theme-caption font-semibold text-blue-600 border border-blue-200 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition"
-                >
-                  <DynamicIcon fallback={() => <p></p>} name="plus" size={14} />{" "}
-                  {PRODUCT_FORM_TEXT.ACTIONS.ADD_ATTRIBUTE}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {attributeFields.map((field, index) => (
-                  <div
-                    key={field.id}
-                    className="relative border border-slate-200 rounded-xl p-4 bg-slate-50 group"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => removeAttribute(index)}
-                      className="absolute top-2.5 right-2.5 text-slate-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100 bg-white rounded-md p-1 border border-slate-200 shadow-sm"
-                    >
-                      <DynamicIcon
-                        fallback={() => <p></p>}
-                        name="trash-2"
-                        size={14}
-                      />
-                    </button>
-                    <div className="mb-3">
-                      <label className="block text-theme-caption font-semibold text-slate-600 mb-1">
-                        {PRODUCT_FORM_TEXT.LABELS.ATTR_TITLE}
-                      </label>
-                      <input
-                        type="text"
-                        className="form_input"
-                        placeholder={PRODUCT_FORM_TEXT.LABELS.ATTR_TITLE_PH}
-                        {...register(`attributes.${index}.name`, {
-                          required: PRODUCT_FORM_TEXT.ERRORS.ATTR_TITLE,
-                        })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-theme-caption font-semibold text-slate-600 mb-1">
-                        {PRODUCT_FORM_TEXT.LABELS.DETAILS}
-                      </label>
-                      <textarea
-                        rows={2}
-                        className="form_input"
-                        placeholder={PRODUCT_FORM_TEXT.LABELS.ATTR_DESC_PH}
-                        {...register(`attributes.${index}.value`, {
-                          required: PRODUCT_FORM_TEXT.ERRORS.ATTR_VAL,
-                        })}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+      {optionsLoaded && hasMissingOptions && (
+        <div className="mb-6 p-4 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl">
+          <p className="flex items-center gap-2 font-medium">
+            <AlertTriangle size={18} />
+            {PRODUCT_FORM_TEXT.MESSAGES.MISSING_OPTIONS_TITLE}
+          </p>
+          <p className="mt-1 text-sm ml-6">
+            {PRODUCT_FORM_TEXT.MESSAGES.MISSING_OPTIONS_DESC}
+          </p>
         </div>
-
-        {/* ── 2. PRICING & INVENTORY ── */}
-        <div className="section">
-          <div className="section_header">
-            <DynamicIcon
-              fallback={() => <p></p>}
-              name="tag"
-              size={18}
-              className="text-blue-500"
-            />
-            <h2 className="text-theme-body font-semibold text-slate-800">
-              {PRODUCT_FORM_TEXT.SECTIONS.PRICING}
-            </h2>
-          </div>
-          <div className="p-6">
-            <div className="p-6 flex flex-col md:flex-row gap-6 border border-slate-200 rounded-xl bg-slate-50">
-              {Array.isArray(PRODUCT_FORM_PRICING_FIELDS) &&
-                PRODUCT_FORM_PRICING_FIELDS.map((field) => (
-                  <div key={field.name} className="mb-4 flex-1">
-                    <label className="block text-theme-body-sm font-semibold text-slate-700 mb-1">
-                      {field.label}
-                    </label>
-                    <input
-                      type="text"
-                      className="form_input"
-                      placeholder={field.placeholder}
-                      {...register(field.name as keyof ProductFormValuesType)}
-                    />
-                    {errors[field.name as keyof ProductFormValuesType] && (
-                      <p className="text-red-500 text-theme-caption mt-1 flex items-center gap-1">
-                        <DynamicIcon
-                          fallback={() => <p></p>}
-                          name="alert-circle"
-                          size={16}
-                        />
-                        {
-                          errors[field.name as keyof ProductFormValuesType]
-                            ?.message as string
-                        }
-                      </p>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── LOGISTICS & DIMENSIONS ── */}
-        <div className="section">
-          <div className="section_header">
-            <DynamicIcon
-              fallback={() => <p></p>}
-              name="truck"
-              size={18}
-              className="text-amber-500"
-            />
-            <h2 className="text-theme-body font-semibold text-slate-800">
-              {PRODUCT_FORM_TEXT.SECTIONS.LOGISTICS}
-            </h2>
-          </div>
-          <div className="p-6">
-            <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6 border border-slate-200 rounded-xl bg-slate-50">
-              {PRODUCT_FORM_TEXT.LOGISTICS_FIELDS.map((field) => (
-                <div key={field.name}>
-                  <label className="form_label">
-                    {field.label} <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form_input"
-                    placeholder={field.placeholder}
-                    {...register(field.name as keyof ProductFormValuesType, {
-                      required: `${field.label} is required`,
-                    })}
-                  />
-                  {errors[field.name as keyof ProductFormValuesType] && (
-                    <p className="text-red-500 text-theme-caption mt-1 flex items-center gap-1">
-                      <DynamicIcon
-                        fallback={() => <p></p>}
-                        name="alert-circle"
-                        size={14}
-                      />
-                      {
-                        errors[field.name as keyof ProductFormValuesType]
-                          ?.message as string
-                      }
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── 3. MEDIA ── */}
-        <div className="section">
-          <div className="section_header">
-            <DynamicIcon
-              fallback={() => <p></p>}
-              name="image"
-              size={18}
-              className="text-indigo-500"
-            />
-            <h2 className="text-theme-body font-semibold text-slate-800">
-              {PRODUCT_FORM_TEXT.SECTIONS.MEDIA}
-            </h2>
-          </div>
-
-          {/* Global Media Guideline Banner */}
-          <div className="px-6 pt-4 pb-2">
-            <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-3 flex gap-3 items-start">
-              <DynamicIcon
-                fallback={() => <p></p>}
-                name="info"
-                size={16}
-                className="text-indigo-500 mt-0.5 shrink-0"
-              />
-              <p className="text-theme-caption text-indigo-700 leading-relaxed">
-                <strong>{PRODUCT_FORM_TEXT.MEDIA_GUIDE.TITLE}</strong>{" "}
-                {PRODUCT_FORM_TEXT.MEDIA_GUIDE.DESC}
+      )}
+      <FormProvider {...methods}>
+        <form
+          onSubmit={handleSubmit(onSubmit, (errors) => {
+          
+            const formValues = getValues();
+        
+            toast.error(PRODUCT_FORM_TEXT.ERRORS.VALIDATION_FAILED, {
+              icon: "⚠️",
+              style: {
+                borderRadius: "10px",
+                background: "#333",
+                color: "#fff",
+              },
+            });
+          })}
+          noValidate
+        >
+          {/* ── HEADER ── */}
+          <header className="flex flex-wrap justify-between items-center mb-8 gap-4">
+            <div>
+              <h1 className="text-theme-h4 font-bold text-slate-900">
+                {formPageLabels.headerTitle}
+              </h1>
+              <p className="text-theme-body-sm text-slate-500 mt-0.5">
+                {formPageLabels.headerDesc}
               </p>
             </div>
-          </div>
+          </header>
 
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {PRODUCT_FORM_TEXT.FILE_UPLOAD_LABELS.map(
-              ({ label, fieldName, limit, hint }) => {
-                const { files, setFiles } =
-                  fileStateMap[fieldName as keyof typeof fileStateMap];
-
-                return (
-                  <div
-                    key={fieldName}
-                    className="border border-slate-200 rounded-xl p-5 bg-slate-50 flex flex-col"
+          {!isUpdate && usage && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between">
+              <span className="text-sm text-blue-900 flex items-center gap-2">
+                <Info size={16} />
+                <strong>{PRODUCT_FORM_TEXT.LIMITS.PRODUCTS_LIMIT}</strong>{" "}
+                {usage.isUnlimited
+                  ? PRODUCT_FORM_TEXT.LIMITS.UNLIMITED
+                  : `${usage.used} ${PRODUCT_FORM_TEXT.LIMITS.OF} ${usage.limitValue} ${PRODUCT_FORM_TEXT.LIMITS.USED}`}
+              </span>
+              {!usage.isUnlimited &&
+                usage.limitValue !== null &&
+                usage.used >= usage.limitValue && (
+                  <a
+                    href="/vendor/settings/billing"
+                    className="text-sm font-semibold text-white bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 transition"
                   >
-                    {/* Header & Dynamic Hint */}
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <h3 className="text-theme-body-sm font-semibold text-slate-700">
-                          {label}
-                        </h3>
-                        <span className="text-theme-tiny font-bold text-slate-500 bg-slate-200/60 px-2 py-0.5 rounded-md uppercase tracking-wider">
-                          Max {limit} file{limit !== 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      <p className="text-theme-caption text-slate-500 leading-relaxed">
-                        {hint}
-                      </p>
-                    </div>
+                    {PRODUCT_FORM_TEXT.LIMITS.UPGRADE_PLAN}
+                  </a>
+                )}
+            </div>
+          )}
 
-                    {/* Upload area */}
-                    <label className="flex flex-col items-center justify-center py-8 border border-dashed border-indigo-200 bg-indigo-50/30 rounded-2xl cursor-pointer hover:bg-indigo-50/80 hover:border-indigo-300 transition-all duration-250 ease-out group mt-auto shadow-[0_2px_10px_rgba(0,0,0,0.01)] hover:shadow-[0_4px_14px_rgba(99,102,241,0.06)]">
-                      <input
-                        type="file"
-                        multiple={limit > 1} // Dynamically enable multiple uploads based on limit
-                        accept="image/*,video/*"
-                        className="hidden"
-                        onChange={(e) =>
-                          handleFileSelect(
-                            e,
-                            files,
-                            setFiles as React.Dispatch<
-                              React.SetStateAction<FileOrProductImage[]>
-                            >,
-                            fieldName as "productMedia" | "featureMedia",
-                          )
-                        }
-                      />
-                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mb-3 shadow-sm border border-indigo-50 group-hover:scale-105 transition-transform duration-250 ease-out">
-                        <DynamicIcon
-                          fallback={() => <p></p>}
-                          name="upload-cloud"
-                          size={24}
-                          className="text-indigo-400 group-hover:text-indigo-500 transition-colors"
-                        />
-                      </div>
-                      <p className="text-sm font-medium text-slate-700 group-hover:text-indigo-700 transition-colors">
-                        {PRODUCT_FORM_TEXT.MEDIA_GUIDE.BROWSE}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1.5">
-                        {PRODUCT_FORM_TEXT.MEDIA_GUIDE.LIMITS}
-                      </p>
-                    </label>
-
-                    {/* Preview list */}
-                    {files.length > 0 && (
-                      <ul className="flex flex-wrap gap-3 mt-4 pt-4 border-t border-slate-200/60">
-                        {files.map((file: FileOrProductImage, i: number) => (
-                          <li
-                            key={i}
-                            className="relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm w-16 h-16 group/preview"
-                          >
-                            <img
-                              src={getPreviewUrl(file)}
-                              alt={`preview-${i}`}
-                              className="w-full h-full object-cover"
-                            />
-                            {/* Overlay that appears on hover for easier deletion */}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault(); // Prevent triggering the file input label
-                                  handleFileRemove(
-                                    i,
-                                    files,
-                                    setFiles as React.Dispatch<
-                                      React.SetStateAction<FileOrProductImage[]>
-                                    >,
-                                    fieldName as
-                                      | "productMedia"
-                                      | "featureMedia",
-                                    (file as { id?: string }).id ?? undefined,
-                                  );
-                                }}
-                                className="p-1.5 bg-red-500 text-white hover:bg-red-600 transition rounded-full shadow-sm"
-                                title="Remove image"
-                              >
-                                <DynamicIcon
-                                  fallback={() => <p></p>}
-                                  name="trash-2"
-                                  size={14}
-                                />
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                );
-              },
-            )}
+          <GeneralInformationSection />
+          <PricingInventorySection />
+          <LogisticsDimensionsSection />
+          <MediaAssetsSection
+            productUpload={productUpload}
+            featureUpload={featureUpload}
+            setDeletedImgs={setDeletedImgs}
+          />
+          <CategoryTaxationSection
+            categoryOptions={categoryOptions}
+            warehouseOptions={warehouseOptions}
+            taxSlabsOptions={taxSlabsOptions}
+            handleSaveDraftAndRedirect={handleSaveDraftAndRedirect}
+          />
+          {/* ── FOOTER CTA ── */}
+          <div className="flex justify-end gap-3 pb-8">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="flex items-center gap-2 bg-blue-600 text-white text-theme-body-sm font-semibold py-2.5 px-8 rounded-xl hover:bg-blue-700 transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={15} className="animate-spin" />
+                  {isUpdate ? "Updating…" : "Publishing…"}
+                </>
+              ) : (
+                formPageLabels.submitButton
+              )}
+            </button>
           </div>
-        </div>
-
-        {/* ── 4. CATEGORY & TAXATION ── */}
-        <div className="section">
-          <div className="section_header">
-            <DynamicIcon
-              fallback={() => <p></p>}
-              name="building-2"
-              size={18}
-              className="text-blue-500"
-            />
-            <h2 className="text-theme-body font-semibold text-slate-800">
-              {PRODUCT_FORM_TEXT.SECTIONS.CATEGORY_TAX}
-            </h2>
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-6">
-            {/* Category */}
-            <div>
-              <label className="form_label">
-                {PRODUCT_FORM_TEXT.LABELS.CATEGORY}{" "}
-                <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  {...register("category")}
-                  className="form_input appearance-none pr-9"
-                >
-                  <option value="" disabled>
-                    {PRODUCT_FORM_TEXT.LABELS.SELECT_CATEGORY}
-                  </option>
-                  {categoryOptions.map((c, idx) => (
-                    <option key={idx} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-                <DynamicIcon
-                  fallback={() => <p></p>}
-                  name="chevron-down"
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                />
-              </div>
-              {errors.category && (
-                <p className="text-red-500 text-theme-caption mt-1 flex items-center gap-1">
-                  <DynamicIcon
-                    fallback={() => <p></p>}
-                    name="alert-circle"
-                    size={12}
-                  />
-                  {errors.category.message}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="form_label">
-                {PRODUCT_FORM_TEXT.LABELS.TAX_RATE}{" "}
-                <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  {...register("taxSlabId")}
-                  className="form_input appearance-none pr-9"
-                >
-                  <option value="" disabled>
-                    {PRODUCT_FORM_TEXT.LABELS.SELECT_TAX}
-                  </option>
-                  {taxSlabsOptions.map((t, idx) => (
-                    <option key={idx} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-                <DynamicIcon
-                  fallback={() => <p></p>}
-                  name="chevron-down"
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                />
-              </div>
-              {errors.taxSlabId && (
-                <p className="text-red-500 text-theme-caption mt-1 flex items-center gap-1">
-                  <DynamicIcon
-                    fallback={() => <p></p>}
-                    name="alert-circle"
-                    size={12}
-                  />
-                  {errors.taxSlabId.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="form_label">
-                {PRODUCT_FORM_TEXT.LABELS.WAREHOUSE}{" "}
-                <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  {...register("warehouseId")}
-                  className="form_input appearance-none pr-9"
-                >
-                  <option value="" disabled>
-                    {PRODUCT_FORM_TEXT.LABELS.SELECT_WAREHOUSE}
-                  </option>
-                  {warehouseOptions &&
-                    warehouseOptions.map((v) => (
-                      <option value={v.value} key={v.value}>
-                        {v.label}
-                      </option>
-                    ))}
-                </select>
-                <DynamicIcon
-                  fallback={() => <p></p>}
-                  name="chevron-down"
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                />
-              </div>
-              {errors.warehouseId && (
-                <p className="text-red-500 text-theme-caption mt-1 flex items-center gap-1">
-                  <DynamicIcon
-                    fallback={() => <p></p>}
-                    name="alert-circle"
-                    size={12}
-                  />
-                  {errors.warehouseId.message}
-                </p>
-              )}
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="form_label">
-                Status <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <select
-                  {...register("status")}
-                  className="form_input appearance-none pr-9"
-                >
-                  <option value="" disabled>
-                    Select Status
-                  </option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-                <DynamicIcon
-                  fallback={() => <p></p>}
-                  name="chevron-down"
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                />
-              </div>
-              {errors.status && (
-                <p className="text-red-500 text-theme-caption mt-1 flex items-center gap-1">
-                  <DynamicIcon
-                    fallback={() => <p></p>}
-                    name="alert-circle"
-                    size={12}
-                  />
-                  {errors.status.message}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── FOOTER CTA ── */}
-        <div className="flex justify-end gap-3 pb-8">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 bg-blue-600 text-white text-theme-body-sm font-semibold py-2.5 px-8 rounded-xl hover:bg-blue-700 transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? (
-              <>
-                <DynamicIcon
-                  fallback={() => <p></p>}
-                  name="loader-2"
-                  size={15}
-                  className="animate-spin"
-                />
-                {isUpdate ? "Updating…" : "Publishing…"}
-              </>
-            ) : (
-              formPageLabels.submitButton
-            )}
-          </button>
-        </div>
-      </form>
+        </form>
+      </FormProvider>
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import { ChevronDown } from "lucide-react";
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"; // 1. Added YAxis import
-import { DASHBOARD_CHART_TEXT } from "@/constants/adminText";
+import { DASHBOARD_CHART_TEXT } from "@/constants";
 
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {

@@ -39,7 +39,7 @@ yarn-error.log*
 next-env.d.ts
 certificates
 .vercel
-
+.agents
 graphify-out
 AGENTS.md
 CLAUDE.md

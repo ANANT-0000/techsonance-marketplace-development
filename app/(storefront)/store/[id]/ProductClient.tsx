@@ -2,11 +2,16 @@
 import { useEffect, useReducer } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useImageColors } from "@/hooks/useImageColors";
 import { WishListBtn } from "@/components/customer/WishListBtn";
 import { AddToCart } from "@/components/customer/AddToCart";
 import { BuyBtn } from "@/components/customer/BuyBtn";
 import { ProductReview } from "@/components/customer/ProductReview";
+import { RelatedProducts } from "@/components/customer/RelatedProducts";
+import { RecommendedProducts } from "@/components/customer/RecommendedProducts";
+import { CategoryProducts } from "@/components/customer/CategoryProducts";
+import { OnSaleProducts } from "@/components/customer/OnSaleProducts";
 import { ProductSpecifications } from "@/components/customer/ProductSpec";
 import {
   BuyBtnMode,
@@ -51,28 +56,35 @@ import { RootState } from "@/lib/store";
 import { AxiosError, AxiosResponse } from "axios";
 import { PageLoader } from "@/components/customer/PageLoader";
 import { ProductClientConfig } from "@/constants";
+import {
+  PRODUCT_ERROR_TEXT,
+  PRODUCT_POLICY_TEXT,
+  PRODUCT_CLIENT_TEXT,
+  BUY_BTN_TEXT,
+} from "@/constants/customerText";
 
 // ─── Trust Badges (dynamic, policy-driven) ───────────────────────────────────
 function buildTrustBadges(policy: ProductPolicyInfo | null | undefined) {
   const base = [
-    { icon: Truck, label: "Free Delivery" },
-    { icon: Banknote, label: "Cash on Delivery" },
-    { icon: FileSpreadsheet, label: "GST Billing" },
+    { icon: Truck, label: PRODUCT_POLICY_TEXT.FREE_DELIVERY },
+    { icon: Banknote, label: PRODUCT_POLICY_TEXT.CASH_ON_DELIVERY },
+    { icon: FileSpreadsheet, label: PRODUCT_POLICY_TEXT.GST_BILLING },
   ];
 
   if (policy?.is_returnable) {
     base.splice(1, 0, {
       icon: RotateCcw,
       label: policy.return_window_days
-        ? `${policy.return_window_days}-Day Returns`
-        : "Returns Accepted",
+        ? `${policy.return_window_days}${PRODUCT_POLICY_TEXT.DAY_RETURNS}`
+        : PRODUCT_POLICY_TEXT.RETURNS_ACCEPTED,
     });
   }
 
   if (policy?.has_warranty) {
     base.splice(policy?.is_returnable ? 2 : 1, 0, {
       icon: Shield,
-      label: policy.warranty_duration_label ?? "Warranty Included",
+      label:
+        policy.warranty_duration_label ?? PRODUCT_POLICY_TEXT.WARRANTY_INCLUDED,
     });
   }
 
@@ -81,7 +93,23 @@ function buildTrustBadges(policy: ProductPolicyInfo | null | undefined) {
 
 // ─── Policy Info Card ─────────────────────────────────────────────────────────
 function PolicyInfoCard({ policy }: { policy: ProductPolicyInfo | null }) {
-  if (!policy) return null;
+  if (!policy) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 px-4 py-4 flex items-start gap-3">
+        <div className="mt-0.5 p-1.5 bg-gray-100 rounded-full shrink-0">
+          <Shield size={14} className="text-gray-400" />
+        </div>
+        <div>
+          <p className="text-theme-body-sm font-semibold text-gray-700">
+            {PRODUCT_POLICY_TEXT.STANDARD_POLICY_TITLE}
+          </p>
+          <p className="text-theme-caption text-gray-500 mt-0.5">
+            {PRODUCT_POLICY_TEXT.STANDARD_POLICY_DESC}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const hasReturnOrReplace =
     policy.return_replace_mode !== ReturnReplaceMode.NONE;
@@ -89,35 +117,36 @@ function PolicyInfoCard({ policy }: { policy: ProductPolicyInfo | null }) {
   return (
     <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
       <p className="text-theme-caption font-bold text-gray-500 uppercase tracking-wider mb-2.5">
-        Return &amp; Warranty
+        {PRODUCT_POLICY_TEXT.RETURN_AND_WARRANTY}
       </p>
       <div className="flex flex-wrap gap-2">
         {policy.is_returnable && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-full text-theme-caption font-semibold">
             <RotateCcw size={12} />
             {policy.return_window_days
-              ? `${policy.return_window_days}-Day Returns`
-              : "Returns Accepted"}
+              ? `${policy.return_window_days}${PRODUCT_POLICY_TEXT.DAY_RETURNS}`
+              : PRODUCT_POLICY_TEXT.RETURNS_ACCEPTED}
           </span>
         )}
         {policy.is_replaceable && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-full text-theme-caption font-semibold">
             <Package size={12} />
             {policy.replacement_window_days
-              ? `${policy.replacement_window_days}-Day Replacement`
-              : "Replacement Accepted"}
+              ? `${policy.replacement_window_days}${PRODUCT_POLICY_TEXT.DAY_REPLACEMENT}`
+              : PRODUCT_POLICY_TEXT.REPLACEMENT_ACCEPTED}
           </span>
         )}
         {policy.has_warranty && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-100 text-purple-700 rounded-full text-theme-caption font-semibold">
             <Shield size={12} />
-            {policy.warranty_duration_label ?? "Warranty Included"}
+            {policy.warranty_duration_label ??
+              PRODUCT_POLICY_TEXT.WARRANTY_INCLUDED}
           </span>
         )}
         {!hasReturnOrReplace && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-100 text-red-600 rounded-full text-theme-caption font-semibold">
             <AlertCircle size={12} />
-            No Returns / Final Sale
+            {PRODUCT_POLICY_TEXT.NO_RETURNS_FINAL_SALE}
           </span>
         )}
       </div>
@@ -161,6 +190,7 @@ interface State {
   activeTab: Tab;
   quantity: number;
   isPageLoading: boolean;
+  isError: boolean;
 }
 
 enum ActionType {
@@ -174,6 +204,7 @@ enum ActionType {
   SET_ACTIVE_TAB = "SET_ACTIVE_TAB",
   SET_QUANTITY = "SET_QUANTITY",
   SET_PAGE_LOADING = "SET_PAGE_LOADING",
+  SET_ERROR = "SET_ERROR",
 }
 
 type Action =
@@ -201,12 +232,15 @@ type Action =
   | { type: ActionType.SET_SELECTED_COUPON; payload: Coupon | null }
   | { type: ActionType.SET_ACTIVE_TAB; payload: Tab }
   | { type: ActionType.SET_QUANTITY; payload: number }
-  | { type: ActionType.SET_PAGE_LOADING; payload: boolean };
+  | { type: ActionType.SET_PAGE_LOADING; payload: boolean }
+  | { type: ActionType.SET_ERROR; payload: boolean };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case ActionType.SET_PAGE_LOADING:
       return { ...state, isPageLoading: action.payload };
+    case ActionType.SET_ERROR:
+      return { ...state, isError: action.payload };
     case ActionType.SET_LOADING:
       return { ...state, isLoading: action.payload };
     case ActionType.SET_PRODUCT_DATA:
@@ -254,6 +288,7 @@ export default function ProductClient({ id }: { id: string }) {
 
   const [state, dispatch] = useReducer(reducer, {
     isPageLoading: true,
+    isError: false,
     isLoading: false,
     product: undefined,
     activeVariant: undefined,
@@ -276,69 +311,52 @@ export default function ProductClient({ id }: { id: string }) {
     }
   }, [cartItem]);
 
+  const {
+    data: productData,
+    isLoading: isProductLoading,
+    isError: isProductError,
+  } = useQuery({
+    queryKey: ["product", id],
+    queryFn: async () => {
+      if (!id) throw new Error("Product ID is required");
+      const response = await fetchProduct(id);
+      return response.data as Product;
+    },
+    enabled: !!id,
+  });
+
   useEffect(() => {
-    const getProduct = async () => {
-      dispatch({ type: ActionType.SET_LOADING, payload: true });
-      try {
-        const response = await fetchProduct(id);
-        const productData = response.data as Product;
-        let variantData = undefined;
-        let imagesData: ProductImage[] = [];
-        let activeImgData = undefined;
+    if (productData) {
+      let variantData = undefined;
+      let imagesData: ProductImage[] = [];
+      let activeImgData = undefined;
 
-        if (productData?.variants?.length > 0) {
-          variantData = productData.variants[0];
-          imagesData = productData.variants[0].images;
-          activeImgData = productData.variants[0].images[0]?.image_url;
-        }
-
-        dispatch({
-          type: ActionType.SET_PRODUCT_DATA,
-          payload: {
-            product: productData,
-            variant: variantData,
-            images: imagesData,
-            activeImage: activeImgData,
-          },
-        });
-      } catch (error) {
-        toast.error(ProductClientConfig.PRODUCT_LOAD_ERROR);
-
-        dispatch({ type: ActionType.SET_PAGE_LOADING, payload: false });
-      } finally {
-        dispatch({ type: ActionType.SET_LOADING, payload: false });
-        dispatch({ type: ActionType.SET_PAGE_LOADING, payload: false });
+      if (productData?.variants?.length > 0) {
+        variantData = productData.variants[0];
+        imagesData = productData.variants[0].images;
+        activeImgData = productData.variants[0].images[0]?.image_url;
       }
-    };
-    getProduct();
-  }, [id]);
 
-  // useEffect(() => {
-  //     const getProduct = async () => {
-  //         dispatch({ type: ActionType.SET_LOADING, payload: true });
-  //         try {
-  //             const response = await fetchProduct(id);
-  //             const productData = response.data as Product;
-  //             let variantData = undefined;
-  //             let imagesData: ProductImage[] = [];
-  //             let activeImgData = undefined;
+      dispatch({
+        type: ActionType.SET_PRODUCT_DATA,
+        payload: {
+          product: productData,
+          variant: variantData,
+          images: imagesData,
+          activeImage: activeImgData,
+        },
+      });
+      dispatch({ type: ActionType.SET_PAGE_LOADING, payload: false });
+    }
+  }, [productData]);
 
-  //             if (productData?.variants?.length > 0) {
-  //                 variantData = productData.variants[0];
-  //                 imagesData = productData.variants[0].images;
-  //                 activeImgData = productData.variants[0].images[0]?.image_url;
-  //             }
-
-  //             dispatch({
-  //                 type: ActionType.SET_PRODUCT_DATA,
-  //                 payload: { product: productData, variant: variantData, images: imagesData, activeImage: activeImgData }
-  //             });
-  //         } finally {
-  //             dispatch({ type: ActionType.SET_LOADING, payload: false });
-  //         }
-  //     };
-  //     getProduct();
-  // }, [id]);
+  useEffect(() => {
+    if (isProductError) {
+      toast.error(ProductClientConfig.PRODUCT_LOAD_ERROR);
+      dispatch({ type: ActionType.SET_ERROR, payload: true });
+      dispatch({ type: ActionType.SET_PAGE_LOADING, payload: false });
+    }
+  }, [isProductError]);
 
   useEffect(() => {
     const idx = state.productImages.findIndex(
@@ -363,11 +381,15 @@ export default function ProductClient({ id }: { id: string }) {
   };
 
   const basePrice = Number(state.activeVariant?.price) || 0;
-  const discountPct = Number(state.product?.discount_percent) || 0;
   const originalMRP =
-    discountPct > 0
-      ? Math.floor(basePrice / (1 - discountPct / 100))
+    state.product?.compare_at_price &&
+    Number(state.product.compare_at_price) > basePrice
+      ? Number(state.product.compare_at_price)
       : basePrice;
+  const discountPct =
+    originalMRP > basePrice
+      ? Math.round(((originalMRP - basePrice) / originalMRP) * 100)
+      : 0;
 
   let couponDiscount = 0;
   if (state.selectedCoupon) {
@@ -387,7 +409,7 @@ export default function ProductClient({ id }: { id: string }) {
   }
   const finalPrice = Math.max(0, basePrice - couponDiscount);
   const totalSavings = originalMRP - finalPrice;
-  const hasDiscount = discountPct > 0 || couponDiscount > 0;
+  const hasDiscount = originalMRP > basePrice || couponDiscount > 0;
 
   const reviewsList = state.activeVariant?.reviews || [];
   const totalReviews = reviewsList.length;
@@ -396,39 +418,51 @@ export default function ProductClient({ id }: { id: string }) {
       ? Math.round(reviewsList.reduce((s, r) => s + r.rating, 0) / totalReviews)
       : 0;
 
-  const handleCouponSelect = async (coupon: Coupon) => {
-    await AxiosAPI.post(
-      ProductClientConfig.COUPON_VALIDATE_API,
-      {
-        userId: user?.id,
-        code: coupon.code,
-        cartTotal: basePrice,
-        productIdsInCart: [state.product?.id],
-      },
-      { headers: { Authorization: `Bearer ${token}` } },
-    )
-      .then((res: AxiosResponse) => {
-        if (res.data.success !== true || res.status !== 201) {
-          toast.error(
-            res.data.message || ProductClientConfig.COUPON_VALIDATE_ERROR,
-          );
-          setTimeout(
-            () =>
-              dispatch({
-                type: ActionType.SET_COUPON_MODAL_OPEN,
-                payload: false,
-              }),
-            1500,
-          );
-        } else {
-          toast.success(ProductClientConfig.COUPON_SUCCESS);
-          dispatch({ type: ActionType.SET_SELECTED_COUPON, payload: coupon });
-          dispatch({ type: ActionType.SET_COUPON_MODAL_OPEN, payload: false });
-        }
-      })
-      .catch((err: AxiosError) => {
-        toast.error(ProductClientConfig.COUPON_VALIDATE_ERROR);
-      });
+  const validateCouponMutation = useMutation({
+    mutationFn: async (coupon: Coupon) => {
+      const res = await AxiosAPI.post(
+        ProductClientConfig.COUPON_VALIDATE_API,
+        {
+          userId: user?.id,
+          code: coupon.code,
+          cartTotal: basePrice,
+          productIdsInCart: [state.product?.id],
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      return { res, coupon };
+    },
+    onSuccess: ({ res, coupon }) => {
+      if (res.data.success !== true || res.status !== 201) {
+        toast.error(
+          res.data.message || ProductClientConfig.COUPON_VALIDATE_ERROR,
+        );
+        setTimeout(
+          () =>
+            dispatch({
+              type: ActionType.SET_COUPON_MODAL_OPEN,
+              payload: false,
+            }),
+          1500,
+        );
+      } else {
+        toast.success(ProductClientConfig.COUPON_SUCCESS);
+        dispatch({ type: ActionType.SET_SELECTED_COUPON, payload: coupon });
+        dispatch({ type: ActionType.SET_COUPON_MODAL_OPEN, payload: false });
+      }
+    },
+    onError: () => {
+      toast.error(ProductClientConfig.COUPON_VALIDATE_ERROR);
+    },
+  });
+
+  const handleCouponSelect = (coupon: Coupon) => {
+    if (!user?.id) {
+      toast.error(PRODUCT_ERROR_TEXT.LOGIN_TO_APPLY_COUPON);
+      reduxDispatch(openLoginModal(null));
+      return;
+    }
+    validateCouponMutation.mutate(coupon);
   };
 
   const handleCouponModalOpen = () => {
@@ -438,7 +472,27 @@ export default function ProductClient({ id }: { id: string }) {
 
   const inStock = (state.activeVariant?.inventory?.stock_quantity ?? 0) > 0;
 
-  if (state.isPageLoading) return <ProductPageSkeleton />;
+  if (state.isPageLoading || isProductLoading) return <ProductPageSkeleton />;
+
+  if (state.isError || isProductError || !state.product) {
+    return (
+      <main className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h2 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">
+          {PRODUCT_ERROR_TEXT.NOT_FOUND_TITLE}
+        </h2>
+        <p className="text-gray-500 mt-2 text-center max-w-md px-4">
+          {PRODUCT_ERROR_TEXT.NOT_FOUND_DESC}
+        </p>
+        <button
+          onClick={() => router.push("/")}
+          className="mt-6 px-6 py-2 bg-gray-900 text-white rounded-full font-medium hover:bg-gray-800 transition-colors"
+        >
+          {PRODUCT_ERROR_TEXT.RETURN_HOME}
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-white">
@@ -447,11 +501,12 @@ export default function ProductClient({ id }: { id: string }) {
       {/* ── Breadcrumb ─────────────────────────────────────────────── */}
       <nav className="hidden lg:flex items-center gap-2 max-w-7xl mx-auto px-8 pt-6 pb-2 text-theme-caption text-gray-400 font-medium">
         <span className="hover:text-gray-700 cursor-pointer transition-colors">
-          Home
+          {PRODUCT_CLIENT_TEXT.HOME}
         </span>
         <ChevronRight size={12} />
         <span className="hover:text-gray-700 cursor-pointer transition-colors capitalize">
-          {state.product?.category?.name ||
+          {state.product?.categories?.find(c => c.is_primary)?.name ||
+            state.product?.categories?.[0]?.name ||
             ProductClientConfig.FALLBACK_CATEGORY_NAME}
         </span>
         <ChevronRight size={12} />
@@ -654,7 +709,7 @@ export default function ProductClient({ id }: { id: string }) {
               className="flex items-center justify-between"
             >
               <span className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-theme-xxs font-semibold tracking-widest uppercase px-3 py-1 rounded-full">
-                {state.product?.category?.name || "Product"}
+                {state.product?.categories?.find(c => c.is_primary)?.name || state.product?.categories?.[0]?.name || PRODUCT_CLIENT_TEXT.PRODUCT}
               </span>
               {totalReviews > 0 && (
                 <button
@@ -720,14 +775,14 @@ export default function ProductClient({ id }: { id: string }) {
                     </span>
                     <span className="text-theme-body-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full">
                       {discountPct > 0
-                        ? `${discountPct}% OFF`
-                        : `Save ₹${formatCurrency(totalSavings)}`}
+                        ? `${discountPct}${PRODUCT_CLIENT_TEXT.OFF}`
+                        : `${PRODUCT_CLIENT_TEXT.SAVE}${formatCurrency(totalSavings)}`}
                     </span>
                   </>
                 )}
               </div>
               <p className="text-theme-caption text-gray-400 mt-1 font-medium uppercase tracking-wider">
-                Inclusive of all taxes
+                {PRODUCT_CLIENT_TEXT.INCLUSIVE_OF_ALL_TAXES}
               </p>
 
               {/* Stock indicator */}
@@ -806,10 +861,10 @@ export default function ProductClient({ id }: { id: string }) {
                     </div>
                     <div>
                       <p className="text-theme-body-sm font-bold text-emerald-800 uppercase tracking-wide">
-                        {state.selectedCoupon.code} Applied
+                        {state.selectedCoupon.code} {PRODUCT_CLIENT_TEXT.APPLIED}
                       </p>
                       <p className="text-theme-caption text-emerald-600">
-                        Extra ₹{formatCurrency(couponDiscount)} savings!
+                        {PRODUCT_CLIENT_TEXT.EXTRA}{formatCurrency(couponDiscount)}{PRODUCT_CLIENT_TEXT.SAVINGS}
                       </p>
                     </div>
                   </div>
@@ -836,10 +891,10 @@ export default function ProductClient({ id }: { id: string }) {
                     </div>
                     <div className="text-left">
                       <p className="text-theme-body-sm font-bold text-blue-800">
-                        Available Offers
+                        {PRODUCT_CLIENT_TEXT.AVAILABLE_OFFERS}
                       </p>
                       <p className="text-theme-caption text-blue-500">
-                        Tap to view & apply coupons
+                        {PRODUCT_CLIENT_TEXT.TAP_TO_VIEW_COUPONS}
                       </p>
                     </div>
                   </div>
@@ -852,7 +907,7 @@ export default function ProductClient({ id }: { id: string }) {
             </motion.div>
 
             {/* CTA — desktop */}
-            {state.activeVariant && !isMobile && (
+            {!isMobile && (
               <motion.div
                 variants={{
                   hidden: { opacity: 0, y: 16 },
@@ -860,23 +915,41 @@ export default function ProductClient({ id }: { id: string }) {
                 }}
                 className="flex gap-3 h-12"
               >
-                {/* AddToCart owns its own quantity counter via Redux */}
-                <AddToCart
-                  productVariantId={state.activeVariant.id}
-                  productVariant={state.activeVariant}
-                  styles="flex-1 h-12 rounded-2xl border-2 border-theme-primary bg-white text-theme-primary hover:bg-theme-primary hover:text-theme-primary-foreground font-bold text-theme-body-sm transition-all duration-200"
-                />
-                {inStock ? (
-                  <BuyBtn
-                    id={state.activeVariant.id}
-                    mode={BuyBtnMode.QUICK_BUY}
-                    styles="flex-1 h-12 rounded-2xl bg-gray-900 text-white hover:bg-black font-bold text-theme-body-sm transition-all duration-200"
-                    selectedCoupon={state.selectedCoupon}
-                  />
+                {state.activeVariant ? (
+                  <>
+                    <AddToCart
+                      productVariantId={state.activeVariant.id}
+                      productVariant={state.activeVariant}
+                      styles="flex-1 h-12 rounded-2xl border-2   border-theme-primary bg-white  text-theme-primary hover:bg-theme-primary hover:text-theme-primary-foreground font-bold text-theme-body-sm transition-all duration-200"
+                    />
+                    {inStock ? (
+                      <BuyBtn
+                        id={state.activeVariant.id}
+                        mode={BuyBtnMode.QUICK_BUY}
+                        styles="flex-1 h-12 rounded-2xl bg-gray-900 text-white hover:bg-black font-bold text-theme-body-sm transition-all duration-200"
+                        selectedCoupon={state.selectedCoupon}
+                      />
+                    ) : (
+                      <span className="flex-1 h-12 flex items-center justify-center rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm">
+                        {ProductClientConfig.OUT_OF_STOCK_MESSAGE}
+                      </span>
+                    )}
+                  </>
                 ) : (
-                  <span className="flex-1 h-12 flex items-center justify-center rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm">
-                    {ProductClientConfig.OUT_OF_STOCK_MESSAGE}
-                  </span>
+                  <>
+                    <button
+                      disabled
+                      className="flex-1 h-12 rounded-2xl border-2 border-gray-200 bg-gray-50 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed"
+                    >
+                      {PRODUCT_CLIENT_TEXT.SELECT_A_VARIANT}
+                    </button>
+                    <button
+                      disabled
+                      className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed"
+                    >
+                      {BUY_BTN_TEXT.BUY_NOW}
+                    </button>
+                  </>
                 )}
               </motion.div>
             )}
@@ -912,14 +985,14 @@ export default function ProductClient({ id }: { id: string }) {
             )}
 
             {/* Policy info card — desktop */}
-            {!isMobile && state.product?.policy && (
+            {!isMobile && (
               <motion.div
                 variants={{
                   hidden: { opacity: 0, y: 16 },
                   visible: { opacity: 1, y: 0 },
                 }}
               >
-                <PolicyInfoCard policy={state.product.policy} />
+                <PolicyInfoCard policy={state.product?.policy || null} />
               </motion.div>
             )}
           </motion.div>
@@ -932,8 +1005,8 @@ export default function ProductClient({ id }: { id: string }) {
         <div className="flex border-b border-gray-200 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {(
             [
-              { key: "description", label: "Product Description" },
-              { key: "specs", label: "Technical Specifications" },
+              { key: "description", label: PRODUCT_CLIENT_TEXT.PRODUCT_DESCRIPTION },
+              { key: "specs", label: PRODUCT_CLIENT_TEXT.KEY_FEATURES },
             ] as { key: Tab; label: string }[]
           ).map((tab) => (
             <button
@@ -972,34 +1045,10 @@ export default function ProductClient({ id }: { id: string }) {
                       .map((line, i) => <p key={i}>{line}</p>)
                   ) : (
                     <p className="text-gray-400 italic">
-                      No description available.
+                      {PRODUCT_CLIENT_TEXT.NO_DESCRIPTION}
                     </p>
                   )}
                 </div>
-                {/* Feature highlights */}
-                {state.product?.features &&
-                  state.product.features.length > 0 && (
-                    <div className="space-y-3">
-                      <h3 className="text-theme-body-sm font-bold text-gray-900 uppercase tracking-widest mb-4">
-                        Key Features
-                      </h3>
-                      {state.product.features.map((f, i) => (
-                        <div key={i} className="flex items-start gap-3">
-                          <div className="mt-0.5 w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
-                            <CheckCircle2 size={12} className="text-white" />
-                          </div>
-                          <div>
-                            <p className="text-theme-body-sm font-semibold text-gray-900">
-                              {f.title}
-                            </p>
-                            <p className="text-theme-caption text-gray-500 mt-0.5">
-                              {f.description}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
               </div>
             )}
 
@@ -1008,7 +1057,7 @@ export default function ProductClient({ id }: { id: string }) {
                 <ProductSpecifications product={state.product.features} />
               ) : (
                 <p className="text-gray-400 italic text-theme-body-sm">
-                  No specifications available.
+                  {PRODUCT_CLIENT_TEXT.NO_SPECIFICATIONS}
                 </p>
               ))}
           </motion.div>
@@ -1022,37 +1071,70 @@ export default function ProductClient({ id }: { id: string }) {
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 lg:mt-12 pb-24 lg:pb-16 border-t border-gray-100 pt-8 text-left"
         >
           <h2 className="text-theme-body font-bold text-gray-900 mb-6 uppercase tracking-wider">
-            Customer Reviews
+            {PRODUCT_CLIENT_TEXT.CUSTOMER_REVIEWS}
           </h2>
           <ProductReview productId={state.product.id} />
         </section>
       )}
 
-      {/* ── Mobile: Sticky bottom CTA ──────────────────────────────── */}
-      {state.activeVariant && (
-        <div className="block lg:hidden fixed bottom-[calc(48px+env(safe-area-inset-bottom))] left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-xl px-4 py-3">
-          <div className="flex gap-3 max-w-lg mx-auto h-12">
-            <AddToCart
-              productVariantId={state.activeVariant.id}
-              productVariant={state.activeVariant}
-              styles="flex-1 h-12 rounded-2xl border-2 border-theme-primary bg-theme-primary text-theme-primary-foreground font-bold text-theme-body-sm transition-all"
-            />
-            {inStock ? (
-              <BuyBtn
-                id={state.activeVariant.id}
-                mode={BuyBtnMode.QUICK_BUY}
-                styles="flex-1 h-12 rounded-2xl bg-gray-900 text-white font-bold text-theme-body-sm transition-all"
-                selectedCoupon={state.selectedCoupon}
-                quantity={state.quantity}
-              />
-            ) : (
-              <span className="flex-1 h-12 flex items-center justify-center rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm">
-                {ProductClientConfig.OUT_OF_STOCK_MESSAGE}
-              </span>
-            )}
-          </div>
-        </div>
+      {/* ── Related Products Section ─────────────────────────────────── */}
+      {state.product?.id && <RelatedProducts productId={state.product.id} />}
+
+      {/* ── Recommended Products Section ─────────────────────────────── */}
+      {state.product?.id && (
+        <RecommendedProducts productId={state.product.id} />
       )}
+
+      {/* ── Category Products Section ────────────────────────────────── */}
+      {state.product?.categories && state.product.categories.length > 0 && (
+        <CategoryProducts categoryId={state.product.categories.find(c => c.is_primary)?.id || state.product.categories[0].id} />
+      )}
+
+      {/* ── On Sale Products Section ─────────────────────────────────── */}
+      <OnSaleProducts />
+
+      {/* ── Mobile: Sticky bottom CTA ──────────────────────────────── */}
+      <div className="block lg:hidden fixed bottom-[calc(48px+env(safe-area-inset-bottom))] left-0 right-0 z-50 bg-white border-t border-gray-100 shadow-xl px-4 py-3">
+        <div className="flex gap-3 max-w-lg mx-auto h-12">
+          {state.activeVariant ? (
+            <>
+              <AddToCart
+                productVariantId={state.activeVariant.id}
+                productVariant={state.activeVariant}
+                styles="flex-1 h-12 rounded-2xl border-2 border-theme-primary bg-theme-primary text-theme-primary-foreground font-bold text-theme-body-sm transition-all"
+              />
+              {inStock ? (
+                <BuyBtn
+                  id={state.activeVariant.id}
+                  mode={BuyBtnMode.QUICK_BUY}
+                  styles="flex-1 h-12 rounded-2xl bg-gray-900 text-white font-bold text-theme-body-sm transition-all"
+                  selectedCoupon={state.selectedCoupon}
+                  quantity={state.quantity}
+                />
+              ) : (
+                <span className="flex-1 h-12 flex items-center justify-center rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm">
+                  {ProductClientConfig.OUT_OF_STOCK_MESSAGE}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <button
+                disabled
+                className="flex-1 h-12 rounded-2xl border-2 border-gray-200 bg-gray-50 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed"
+              >
+                {PRODUCT_CLIENT_TEXT.SELECT_A_VARIANT}
+              </button>
+              <button
+                disabled
+                className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed"
+              >
+                {BUY_BTN_TEXT.BUY_NOW}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       <AvailableCouponsModal
         isOpen={state.isCouponModalOpen}

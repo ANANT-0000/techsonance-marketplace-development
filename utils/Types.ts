@@ -78,6 +78,12 @@ export enum ReturnReplaceMode {
   BOTH = "both", // Customer can choose return OR replacement
 }
 
+export interface FilterRule {
+  type: FilterRuleType;
+  operator: FilterRuleOperator;
+  value: string | number | string[] | number[];
+}
+
 /**
  * The resolved return/replacement/warranty info attached to a product
  * by the API after resolving category + product-override policy.
@@ -555,6 +561,7 @@ export interface BestSellingProduct {
 export interface CategoryList {
   title: string;
   url: string;
+  itemsCount?: number;
 }
 
 export interface Feedback {
@@ -668,14 +675,15 @@ export interface Product {
   description: string;
   features: Feature[];
   base_price: string;
-  discount_percent: string;
+  compare_at_price: string | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   created_at: string;
   updated_at: string;
   company_id: string;
   vendor_id: string;
-  category_id: string;
+  categories?: (Category & { is_primary?: boolean })[];
   variants: Variant[];
-  category: Category;
   /**
    * Resolved policy for this product (category default or product-level override).
    * Populated by the API. Null when no policy is assigned.
@@ -1035,7 +1043,9 @@ export type VariantFormValues = {
   variantName: string;
   attributes: { name: string; value: string }[];
   basePrice: string;
-  discountPercent: string;
+  compareAtPrice: string;
+  saleStartsAt: string;
+  saleEndsAt: string;
   stocks: string;
   sku: string;
   variantMediaMain: FileOrProductImage[];
@@ -1061,6 +1071,9 @@ export type Variant = {
   attributes: ProductAttributes[];
   product_id: string;
   price: string;
+  compare_at_price?: string | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   stock_quantity: number;
   status: ProductStatus;
   seo_meta: string | null;
@@ -1070,13 +1083,20 @@ export type Variant = {
   inventory: Inventory;
   reviews?: Review[];
 };
+
+/**
+ * @deprecated This type is wildly inaccurate and does not reflect the NestJS backend schema.
+ * It is marked for deletion. Do not use for new features. Use specialized types or `Variant`.
+ */
 export type ProductResponseType = {
   id: string;
   name: string;
   description: string;
   features: ProductFeature[];
   base_price: string;
-  discount_percent: string;
+  compare_at_price: string | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   stock_quantity: string;
   status: ProductStatus;
   has_variants: boolean;
@@ -1084,7 +1104,7 @@ export type ProductResponseType = {
   updated_at: string;
   company_id: string;
   vendor_id: string;
-  category_id: string;
+  categories?: (Category & { is_primary?: boolean })[];
   images: ProductImage[];
   variants: Variant[];
   tax_profile: string;
@@ -1093,6 +1113,11 @@ export type ProductResponseType = {
    * Populated by the API. Null when no policy is assigned.
    */
   policy: ProductPolicyInfo | null;
+  tax_slab_id: string;
+};
+
+export type VariantWithProduct = Variant & {
+  product: Product;
 };
 // USED
 export interface ComplianceFieldPayload {
@@ -1376,6 +1401,15 @@ export enum NavItemType {
   CUSTOM_LINK = "custom_link",
   CATEGORY = "category",
 }
+export enum NavTemplateKey {
+  FILTERED_COLLECTION = "filtered_collection",
+  CATEGORY_LINK = "category_link",
+  CUSTOM_LINK = "custom_link",
+}
+export enum NavItemKind {
+  SYSTEM_ROUTE = "system_route",
+  DYNAMIC_TEMPLATE = "dynamic_template",
+}
 export enum NavItemDisplayType {
   CATEGORY_LISTING = "category_listing",
   DYNAMIC_SUBCATEGORIES = "dynamic_subcategories",
@@ -1497,6 +1531,19 @@ export interface L1NavItem {
   isEmptyTree?: boolean;
 }
 
+export type AnnouncementItemType = "text" | "link" | "feature";
+export type DeviceVisibility = "desktop" | "mobile";
+
+export interface AnnouncementItem {
+  id: string;
+  type: AnnouncementItemType;
+  label: string;
+  target_route?: string;
+  feature_key?: string;
+  visible_on?: DeviceVisibility[];
+  is_highlighted?: boolean;
+}
+
 export interface L1NavbarPayload {
   logo: {
     src: string;
@@ -1519,6 +1566,16 @@ export interface L1NavbarPayload {
     showWishlist: boolean;
     showCart: boolean;
   };
+  announcement?: {
+    isVisible: boolean;
+    itemsLeft: AnnouncementItem[];
+    itemsRight: AnnouncementItem[];
+    bgColor: string;
+    textColor: string;
+    text_size?: string;
+
+    mobile_alignment?: string;
+  };
   navigationItems: L1NavItem[];
 }
 
@@ -1530,6 +1587,7 @@ export interface SiteMap {
   label: string;
   base_path: string;
   default_query_param: string | null;
+  is_system?: boolean;
 }
 
 export interface NavLinkItem {
@@ -1844,6 +1902,29 @@ export interface LandingThemeConfig {
   onPrimary: string;
   onDark: string;
 }
+
+export enum FilterRuleType {
+  CATEGORY = "category",
+  PRICE = "price",
+  BRAND = "brand",
+  SEARCH = "search",
+}
+
+export enum FilterRuleOperator {
+  IN = "in",
+  EQ = "eq",
+  LT = "lt",
+  LTE = "lte",
+  GT = "gt",
+  GTE = "gte",
+  CONTAINS = "contains",
+}
+
+export interface FilterRule {
+  type: FilterRuleType;
+  operator: FilterRuleOperator;
+  value: string | number | string[] | number[];
+}
 export interface FieldOption {
   label: string;
   value: string;
@@ -2112,4 +2193,99 @@ export interface VendorSubscriptionStatus {
   in_grace_period: boolean;
   show_banner: boolean;
   banner_urgency: BannerUrgency;
+}
+export interface CreateProductPayload {
+  product_data: {
+    warehouse_id: string;
+    tax_slab_id: string;
+    name: string; // Product name maps to variant_name when first created, wait the dto says name!
+    description: string;
+    features: { title: string; description: string }[];
+    category_ids: string[];
+    primary_category_id: string;
+    status?: string;
+    base_price: string;
+    compare_at_price: string | null;
+    sale_starts_at?: string | null;
+    sale_ends_at?: string | null;
+    stock_quantity: number;
+    variant_name: string;
+    sku: string;
+    price?: number;
+    attributes?: Record<string, any>[];
+    seo_meta?: string;
+    weight_kg: string;
+    length_cm: number;
+    width_cm: number;
+    height_cm: number;
+    product_media?: string[];
+    feature_media?: string[];
+    variant_id?: string;
+  };
+  imagesToDelete?: string[];
+}
+
+export interface CreateProductVariantPayload {
+  variant_data: {
+    product_id?: string;
+    variant_name: string;
+    attributes: Record<string, any>[];
+    status: string;
+    price: number;
+    compare_at_price?: number | null;
+    sale_starts_at?: string | null;
+    sale_ends_at?: string | null;
+    stock_quantity: number;
+    sku: string;
+    warehouse_id?: string;
+    weight_kg: string;
+    length_cm: number;
+    width_cm: number;
+    height_cm: number;
+    product_media?: string[];
+    feature_media?: string[];
+  };
+  imagesToDelete?: string[];
+}
+
+export enum AsyncStatus {
+  IDLE = "idle",
+  LOADING = "loading",
+  SUCCESS = "success",
+  ERROR = "error",
+}
+
+export interface HomeCategories {
+  id: string;
+  name: string;
+  product_image: string;
+}
+export enum HeroLayout {
+  CENTER_OVERLAY = "center-overlay",
+  LEFT_CONTENT_RIGHT_IMAGE = "left-content-right-image",
+  RIGHT_CONTENT_LEFT_IMAGE = "right-content-left-image",
+}
+
+export enum HeroBgStyle {
+  GRADIENT = "gradient",
+  SOLID = "solid",
+}
+
+export enum HeroBannerType {
+  CAROUSEL = "carousel",
+  VIDEO = "video",
+}
+
+export interface HeroSlide {
+  id?: string | number;
+  image_url?: string;
+  mobile_image_url?: string;
+  title?: string;
+  subtitle?: string;
+  btn_text?: string;
+  btn_link?: string;
+  layout?: HeroLayout;
+  bg_style?: HeroBgStyle | "custom";
+  bg_color?: string;
+  search_query?: string;
 }

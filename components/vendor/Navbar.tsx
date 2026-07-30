@@ -8,8 +8,9 @@ import { LogOut, Building2, Mail, ChevronDown } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/hooks/reduxHooks";
 import { logOut } from "@/lib/features/auth/authSlice";
 import { VENDOR_NAVBAR_TEXT } from "@/constants/vendorText";
-import { userIcon } from "@/constants/common";
+
 import { RootState } from "@/lib/store";
+import { userIcon } from "@/constants";
 
 // 2. Enums
 export enum UserRole {

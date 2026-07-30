@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { handleAssignPermission } from "@/utils/adminApiClients";
-import { ASSIGN_SECTION_TEXT } from "@/constants/adminText";
+import { ASSIGN_SECTION_TEXT } from "@/constants";
 import toast from "react-hot-toast";
 
 interface Permission {

@@ -24,108 +24,6 @@ interface MergedPlan {
   override: LandingPricingPlanOverride;
 }
 
-function addCapacityFeature(
-  features: string[],
-  value: unknown,
-  label: string,
-  unlimitedLabel: string,
-) {
-  if (typeof value !== "number") return;
-  if (value === -1) {
-    features.push(unlimitedLabel);
-    return;
-  }
-  features.push(`Up to ${value.toLocaleString()} ${label}`);
-}
-
-function buildFallbackOverride(
-  plan: SubscriptionPlan,
-): LandingPricingPlanOverride {
-  const capabilities = plan.capabilities ?? {};
-  const features: string[] = [];
-
-  const addFeature = (value: string | null | undefined) => {
-    if (value && !features.includes(value)) {
-      features.push(value);
-    }
-  };
-
-  addCapacityFeature(
-    features,
-    capabilities.max_products,
-    "products",
-    "Unlimited products",
-  );
-  addCapacityFeature(
-    features,
-    capabilities.max_orders_per_month,
-    "orders/month",
-    "Unlimited orders/month",
-  );
-  addCapacityFeature(
-    features,
-    capabilities.max_team_members,
-    "team members",
-    "Unlimited team members",
-  );
-
-  if (capabilities.can_use_custom_domain === true) addFeature("Custom domain");
-  if (capabilities.can_manage_inventory === true)
-    addFeature("Inventory management");
-  if (capabilities.can_access_basic_analytics === true)
-    addFeature("Basic analytics");
-  if (capabilities.can_access_advanced_analytics === true)
-    addFeature("Advanced analytics");
-  if (capabilities.can_use_promotions === true)
-    addFeature("Promotions & coupons");
-  if (capabilities.can_use_proxy_accounts === true)
-    addFeature("Proxy accounts");
-  if (capabilities.can_use_api_access === true) addFeature("API access");
-  if (capabilities.can_export_pdf_reports === true) addFeature("PDF reports");
-  if (capabilities.can_use_courier_fallback === true)
-    addFeature("Courier fallback");
-  if (capabilities.can_view_margin_analysis === true)
-    addFeature("Margin analysis");
-  if (capabilities.can_set_shipping_priority === true)
-    addFeature("Shipping priority controls");
-  if (capabilities.can_manage_legal_documents === true)
-    addFeature("Legal documents management");
-  if (capabilities.granular_role_permissions === true)
-    addFeature("Granular role permissions");
-  if (capabilities.can_manage_warehouses === "multi_location")
-    addFeature("Multi-location warehouses");
-
-  if (typeof capabilities.cms_control === "string") {
-    if (capabilities.cms_control === "basic") addFeature("Basic CMS control");
-    if (capabilities.cms_control === "advanced")
-      addFeature("Advanced CMS control");
-    if (capabilities.cms_control === "full_custom")
-      addFeature("Full custom CMS");
-  }
-
-  if (typeof capabilities.support_level === "string") {
-    if (capabilities.support_level === "email") addFeature("Email support");
-    if (capabilities.support_level === "priority")
-      addFeature("Priority support");
-    if (capabilities.support_level === "dedicated_manager") {
-      addFeature("Dedicated account manager");
-    }
-  }
-
-  const isEnterpriseLike =
-    (plan.plan_name || "").toLowerCase().includes("enterprise") ||
-    (plan.display_name || "").toLowerCase().includes("enterprise");
-
-  return {
-    description: isEnterpriseLike
-      ? "For larger teams that need dedicated support, advanced controls, and automation."
-      : plan.display_name,
-    features,
-    ctaLabel: isEnterpriseLike ? "Contact Sales" : "Get Started",
-    ctaHref: VEDNOR_REGISTER_PATH,
-    isFeatured: false,
-  };
-}
 
 export interface PricingSectionProps {
   initialPlans?: SubscriptionPlan[];
@@ -209,14 +107,12 @@ export default function PricingSection({
           ? String(Math.round(Number(annualTotalNum) / 12))
           : (plan.price_annual ?? null);
 
-        // Build features from CMS features array; fall back to capabilities object
+        // Build features from CMS features array
         const dbFeatures = (plan.features || [])
           .map((f: any) => formatFeatureDisplay(f))
           .filter(Boolean) as string[];
 
-        const fallbackOverride = buildFallbackOverride(plan);
-        const finalFeatures =
-          dbFeatures.length > 0 ? dbFeatures : fallbackOverride.features;
+        const finalFeatures = dbFeatures;
 
         const override: LandingPricingPlanOverride = {
           ...baseOverride,

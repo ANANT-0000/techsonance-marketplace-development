@@ -12,6 +12,9 @@ export const passwordValidation = new RegExp(
   /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*\-+]).{8,}$/,
 );
 
+export const SAFE_TEXT_REGEX = /^[^<>{};]+$/;
+export const SAFE_TEXT_MESSAGE = "Invalid characters detected. <, >, {, }, ; are not allowed.";
+
 export const PASSWORD_REQUIREMENTS_REGEX = {
   LOWERCASE: /[a-z]/,
   UPPERCASE: /[A-Z]/,
@@ -380,22 +383,26 @@ export const productSchema = z.object({
   productName: z
     .string()
     .min(1, { error: "Product name is required" })
-    .max(355, { error: "Name is too long" }),
+    .max(355, { error: "Name is too long" })
+    .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
   description: z
     .string()
     .min(10, { error: "Description must be at least 10 characters" })
-    .max(5000, { error: "Description cannot exceed 5000 characters" }),
+    .max(5000, { error: "Description cannot exceed 5000 characters" })
+    .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
   features: z
     .array(
       z.object({
         title: z
           .string()
           .min(1, { error: "Feature title required" })
-          .max(355, { error: "Feature title is too long" }),
+          .max(355, { error: "Feature title is too long" })
+          .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
         description: z
           .string()
           .min(1, { error: "Feature details required" })
           .max(5000, { error: "Feature details cannot exceed 5000 characters" })
+          .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE })
           .or(z.number())
           .or(z.boolean()),
       }),
@@ -407,11 +414,13 @@ export const productSchema = z.object({
       name: z
         .string()
         .min(1, { error: "Attribute name required" })
-        .max(355, { error: "Attribute name is too long" }),
+        .max(355, { error: "Attribute name is too long" })
+        .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
       value: z
         .string()
         .min(1, { error: "Attribute value required" })
-        .max(355, { error: "Attribute value is too long" }),
+        .max(355, { error: "Attribute value is too long" })
+        .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
     }),
   ),
   basePrice: z
@@ -422,12 +431,15 @@ export const productSchema = z.object({
     })
     .transform((val) => parseFloat(val)),
 
-  discountPercent: z
+  compareAtPrice: z
     .string()
-    .regex(/^\d+(\.\d{1,2})?$/, { error: "Invalid discount format" })
+    .regex(/^\d+(\.\d{1,2})?$/, { error: "Invalid price format" })
     .optional()
     .or(z.literal(""))
     .transform((val) => (val ? parseFloat(val) : null)),
+
+  saleStartsAt: z.string().optional().or(z.literal("")),
+  saleEndsAt: z.string().optional().or(z.literal("")),
 
   stocks: z
     .string()
@@ -438,7 +450,8 @@ export const productSchema = z.object({
 
   sku: z.string().optional(),
 
-  category: z.string().min(1, { error: "Please select a category" }),
+  categories: z.array(z.string()).min(1, { message: "Please select at least one category" }),
+  primaryCategory: z.string().min(1, { message: "Please select a primary category" }),
 
   status: z.enum(Object.values(ProductStatus) as [string, ...string[]], {
     error: "Please select a status",
@@ -474,11 +487,36 @@ export const productSchema = z.object({
     .array(z.any())
     .min(0, { error: "At least one feature image is required" })
     .max(10, { error: "You can upload up to 10 images" }),
-});
+}).transform((data) => ({
+  name: data.productName,
+  description: data.description,
+  features: data.features.map((f) => ({
+    title: f.title,
+    description: String(f.description),
+  })),
+  attributes: data.attributes,
+  category_ids: data.categories || [],
+  primary_category_id:
+    data.primaryCategory || (data.categories && data.categories[0]) || "",
+  status: data.status.toLowerCase(),
+  base_price: data.basePrice,
+  compare_at_price: data.compareAtPrice,
+  sale_starts_at: data.saleStartsAt || null,
+  sale_ends_at: data.saleEndsAt || null,
+  stock_quantity: data.stocks || 0,
+  sku: data.sku || "",
+  warehouse_id: data.warehouseId,
+  tax_slab_id: data.taxSlabId,
+  variant_name: data.productName,
+  weight_kg: String(data.weight_kg),
+  length_cm: data.length_cm,
+  width_cm: data.width_cm,
+  height_cm: data.height_cm,
+}));
 // Replace z.infer with these two:
 export type ProductFormInput = z.input<typeof productSchema>;
 export type ProductFormOutput = z.output<typeof productSchema>;
-export type ProductFormValuesType = z.infer<typeof productSchema>;
+export type ProductFormValuesType = z.input<typeof productSchema>;
 
 export const productVariantSchema = z.object({
   productId: z.string().optional(),
@@ -487,17 +525,20 @@ export const productVariantSchema = z.object({
   variantName: z
     .string()
     .min(1, { error: "Variant name is required" })
-    .max(355, { error: "Name is too long" }),
+    .max(355, { error: "Name is too long" })
+    .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
   attributes: z.array(
     z.object({
       name: z
         .string()
         .min(1, { error: "Attribute name required" })
-        .max(355, { error: "Attribute name is too long" }),
+        .max(355, { error: "Attribute name is too long" })
+        .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
       value: z
         .string()
         .min(1, { error: "Attribute value required" })
-        .max(355, { error: "Attribute value is too long" }),
+        .max(355, { error: "Attribute value is too long" })
+        .regex(SAFE_TEXT_REGEX, { error: SAFE_TEXT_MESSAGE }),
     }),
   ),
   basePrice: z
@@ -508,12 +549,15 @@ export const productVariantSchema = z.object({
     })
     .transform((val) => parseFloat(val)),
 
-  discountPercent: z
+  compareAtPrice: z
     .string()
-    .regex(/^\d+(\.\d{1,2})?$/, { error: "Invalid discount format" })
+    .regex(/^\d+(\.\d{1,2})?$/, { error: "Invalid price format" })
     .optional()
     .or(z.literal(""))
     .transform((val) => (val ? parseFloat(val) : null)),
+
+  saleStartsAt: z.string().optional().or(z.literal("")),
+  saleEndsAt: z.string().optional().or(z.literal("")),
 
   stocks: z
     .string()
@@ -555,9 +599,26 @@ export const productVariantSchema = z.object({
     .array(z.any())
     .max(10, { error: "You can upload up to 10 images" })
     .optional(),
-});
+}).transform((data) => ({
+  variant_name: data.variantName,
+  attributes: data.attributes,
+  status: data.status.toLowerCase(),
+  price: data.basePrice,
+  compare_at_price: data.compareAtPrice,
+  sale_starts_at: data.saleStartsAt || null,
+  sale_ends_at: data.saleEndsAt || null,
+  stock_quantity: data.stocks || 0,
+  sku: data.sku || "",
+  warehouse_id: data.warehouseId,
+  weight_kg: String(data.weight_kg),
+  length_cm: data.length_cm,
+  width_cm: data.width_cm,
+  height_cm: data.height_cm,
+}));
 
-export type ProductVariantFormValuesType = z.infer<typeof productVariantSchema>;
+export type ProductVariantFormInput = z.input<typeof productVariantSchema>;
+export type ProductVariantFormOutput = z.output<typeof productVariantSchema>;
+export type ProductVariantFormValuesType = z.input<typeof productVariantSchema>;
 
 export const contactSchema = z.object({
   name: z

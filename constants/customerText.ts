@@ -90,6 +90,22 @@ export const CUSTOMER_FEEDBACK_TEXT = {
   TITLE: "Customer Feedback",
 };
 
+export const RELATED_PRODUCTS_TEXT = {
+  TITLE: "You might also like",
+};
+
+export const RECOMMENDED_PRODUCTS_TEXT = {
+  TITLE: "Recommended For You",
+};
+
+export const CATEGORY_PRODUCTS_TEXT = {
+  TITLE: "More from this Category",
+};
+
+export const ON_SALE_PRODUCTS_TEXT = {
+  TITLE: "Products on Sale",
+};
+
 export const FILTER_SIDEBAR_TEXT = {
   CATEGORY: "Category",
   PRICE_RANGE: "Price Range",
@@ -186,14 +202,14 @@ export const PRODUCT_REVIEW_TEXT = {
 export const PRODUCT_SPEC_TEXT = {
   YES: "Yes",
   NO: "No",
-  EMPTY_TITLE: "No specifications available",
-  EMPTY_DESC: "Technical details will appear here once added.",
-  HEADER: "Specifications",
-  ATTRIBUTE: "attribute",
-  ATTRIBUTES: "attributes",
+  EMPTY_TITLE: "No features listed",
+  EMPTY_DESC: "Product details will appear here once added.",
+  HEADER: "Key Features",
+  ATTRIBUTE: "feature",
+  ATTRIBUTES: "features",
   SHOW_LESS: "Show less",
   SHOW_ALL: "Show all",
-  SPECIFICATIONS_LOWER: "specifications",
+  SPECIFICATIONS_LOWER: "features",
 };
 
 export const PROFILE_SIDEBAR_TEXT = {
@@ -268,6 +284,16 @@ export const CURATED_DISCOVERY_TEXT = {
   LIVE_CURATION: "Live Curation",
   NO_ITEMS: "No items configured for this curated list.",
   VIEW_ALL: "View All Catalog Products",
+  CURATION_IN_PROGRESS: "Curation in Progress",
+  CURATION_DESC: "We are hand-picking exceptional products for this space.",
+};
+
+export const STOREFRONT_HOME_TEXT = {
+  SPECIAL_OFFERS: "SPECIAL OFFERS",
+  PROMO_COMING_SOON: "Exciting new promotions and limited-time deals will appear here soon.",
+  MOBILE_PROMO_COMING_SOON: "Exciting new promotions will appear here soon.",
+  COMING_SOON: "Coming Soon",
+  MORE_SOON: "More Soon",
 };
 
 export const INTERACTIVE_HERO_TEXT = {
@@ -281,6 +307,9 @@ export const NEW_ARRIVALS_TEXT = {
   NEW_ARRIVALS: "New Arrivals",
   VIEW_PRODUCT: "View Product",
   NEW_ARRIVAL_PREFIX: "New Arrival",
+  NO_ARRIVALS_YET: "No new arrivals yet",
+  NO_ARRIVALS_DESC: "We're constantly updating our catalog. Check back soon for exciting new products in this category.",
+  BADGE_NEW: "NEW",
 };
 
 export const NEWSLETTER_TEXT = {
@@ -290,6 +319,8 @@ export const NEWSLETTER_TEXT = {
 
 export const PROMO_BANNER_TEXT = {
   SHOP_NOW: "Shop Now",
+  DEFAULT_TITLE: "Explore Our Collection",
+  DEFAULT_DESC: "Discover products handpicked for style and quality.",
 };
 
 export const SCARCITY_BLOCK_TEXT = {
@@ -299,6 +330,8 @@ export const SCARCITY_BLOCK_TEXT = {
   HRS: "HRS",
   MINS: "MINS",
   SECS: "SECS",
+  LIMITED_OFFERS: "LIMITED OFFERS",
+  STAY_TUNED: "Stay tuned for our upcoming promotions.",
 };
 
 export const SHOPPABLE_LOOKBOOK_TEXT = {
@@ -955,3 +988,58 @@ export const NavbarConfig = {
     "bg-rose-100 text-rose-700",
   ],
 } as const;
+
+export const PRODUCT_ERROR_TEXT = {
+  NOT_FOUND_TITLE: "Product Not Found",
+  NOT_FOUND_DESC: "We couldn't load the details for this product. It may have been removed or is temporarily unavailable.",
+  RETURN_HOME: "Return to Home",
+  LOGIN_TO_APPLY_COUPON: "Please login to apply coupons.",
+  WIDGET_LOAD_ERROR: "Unable to load products at this time.",
+};
+
+export const PRODUCT_WIDGET_EMPTY_TEXT = {
+  NO_CATEGORY_CONTEXT: "Category context unavailable.",
+  NO_PRODUCT_CONTEXT: "Product context unavailable.",
+  CATEGORY_EMPTY_TITLE: "More Products Coming Soon",
+  CATEGORY_EMPTY_DESC: "We are actively curating more items for this category.",
+  RECOMMENDED_EMPTY_TITLE: "Curating Recommendations",
+  RECOMMENDED_EMPTY_DESC: "We're gathering personalized recommendations for you.",
+  RELATED_EMPTY_TITLE: "No Related Products",
+  RELATED_EMPTY_DESC: "Check back later for alternative options.",
+  ONSALE_EMPTY_TITLE: "More Deals Incoming",
+  ONSALE_EMPTY_DESC: "We're preparing new discounts. Stay tuned!",
+};
+
+export const PRODUCT_POLICY_TEXT = {
+  STANDARD_POLICY_TITLE: "Standard Policy Applies",
+  STANDARD_POLICY_DESC: "Please check marketplace guidelines for return and warranty details on this item.",
+  RETURN_AND_WARRANTY: "Return & Warranty",
+  RETURNS_ACCEPTED: "Returns Accepted",
+  DAY_RETURNS: "-Day Returns",
+  REPLACEMENT_ACCEPTED: "Replacement Accepted",
+  DAY_REPLACEMENT: "-Day Replacement",
+  WARRANTY_INCLUDED: "Warranty Included",
+  NO_RETURNS_FINAL_SALE: "No Returns / Final Sale",
+  FREE_DELIVERY: "Free Delivery",
+  CASH_ON_DELIVERY: "Cash on Delivery",
+  GST_BILLING: "GST Billing",
+};
+
+export const PRODUCT_CLIENT_TEXT = {
+  INCLUSIVE_OF_ALL_TAXES: "Inclusive of all taxes",
+  SELECT_A_VARIANT: "Select a Variant",
+  PRODUCT: "Product",
+  HOME: "Home",
+  CUSTOMER_REVIEWS: "Customer Reviews",
+  NO_DESCRIPTION: "No description available.",
+  NO_SPECIFICATIONS: "No specifications available.",
+  PRODUCT_DESCRIPTION: "Product Description",
+  KEY_FEATURES: "Key Features",
+  AVAILABLE_OFFERS: "Available Offers",
+  TAP_TO_VIEW_COUPONS: "Tap to view & apply coupons",
+  APPLIED: "Applied",
+  EXTRA: "Extra ₹",
+  SAVINGS: " savings!",
+  OFF: "% OFF",
+  SAVE: "Save ₹",
+};

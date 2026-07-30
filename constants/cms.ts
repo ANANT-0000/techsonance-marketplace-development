@@ -54,11 +54,19 @@ export enum CmsDataKey {
   SOCIAL_PROOF_TESTIMONIALS = "social_proof_testimonials",
   SOCIAL_PROOF_BADGES = "social_proof_badges",
   
+  TRUST_STRIP_BG_COLOR = "trust_strip_bg_color",
+  TRUST_STRIP_LAYOUT = "trust_strip_layout",
+  
   CURATED_TITLE = "curated_title",
   CURATED_SUBTITLE = "curated_subtitle",
   CURATED_TYPE = "curated_type",
   CURATED_PRODUCT_IDS = "curated_product_ids",
   CURATED_BG_COLOR = "curated_bg_color",
+
+  CATEGORY_ASPECT_RATIO_DESKTOP = "category_aspect_ratio_desktop",
+  CATEGORY_ASPECT_RATIO_MOBILE = "category_aspect_ratio_mobile",
+  CATEGORY_BORDER_RADIUS_DESKTOP = "category_border_radius_desktop",
+  CATEGORY_BORDER_RADIUS_MOBILE = "category_border_radius_mobile",
 
   // Navbar CMS keys
   NAV_LOGO_SRC = "nav_logo_src",

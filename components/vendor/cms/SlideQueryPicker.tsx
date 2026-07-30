@@ -90,7 +90,7 @@ export function SlideQueryPicker({
     : allTags;
 
   return (
-    <div className="md:col-span-2">
+    <div className="md:col-span-2 min-w-0 flex flex-col">
       <label className="block text-theme-caption font-bold text-gray-500 mb-1.5">
         Slide Promotion — Pick what products to show
       </label>
@@ -105,7 +105,7 @@ export function SlideQueryPicker({
         placeholder={UiText.FILTER_TAGS}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-theme-caption mb-3 focus:outline-none focus:border-purple-400"
+        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-theme-body-sm shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-slate-900 mb-3"
       />
 
       {/* Tag cloud */}
@@ -129,8 +129,8 @@ export function SlideQueryPicker({
                 onClick={() => toggle(tag)}
                 className={`px-3 py-1 rounded-full text-theme-xxs font-semibold border transition-all duration-150 ${
                   active
-                    ? "bg-purple-600 text-white border-purple-600 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-purple-300 hover:text-purple-700"
+                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-slate-300 hover:text-slate-900"
                 }`}
               >
                 {active ? "✓ " : ""}
@@ -142,7 +142,7 @@ export function SlideQueryPicker({
       )}
 
       {/* Selected summary */}
-      <div className="mt-3 p-3 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+      <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 shadow-inner">
         {selected.length === 0 ? (
           <p className="text-theme-caption text-gray-400">
             {UiText.NO_TAGS_SELECTED}
@@ -158,7 +158,7 @@ export function SlideQueryPicker({
                   {selected.map((t) => (
                     <span
                       key={t}
-                      className="bg-purple-100 text-purple-700 text-theme-tiny font-bold px-2 py-0.5 rounded-full"
+                      className="bg-slate-100 text-slate-900 text-theme-tiny font-bold px-2 py-0.5 rounded-full"
                     >
                       {t}
                     </span>

@@ -28,20 +28,21 @@ export const UiText = {
   SAVE_SUCCESS: "Saved! Storefront will reflect changes on next page load.",
   SAVE_FAILED_PREFIX: "Save failed: ",
   TRY_AGAIN: "Try again.",
-  NO_SLIDES:
-    "No slides yet. Click Add Slide to add hero carousel images. Each slide can link to a product search on the shop page.",
+  NO_SLIDES_TITLE: "Your Carousel is Empty",
+  NO_SLIDES_DESC: "Add your first slide to showcase products, promotions, or announcements on your store's homepage.",
+  ADD_FIRST_SLIDE: "Add First Slide",
   KEY_STATS: "Key Stats (Max 3 Recommended)",
-  NO_STATS:
-    "No stats added. Default promise stats will be shown on the storefront.",
+  NO_STATS_TITLE: "No highlight stats yet",
+  NO_STATS_DESC: 'Add impressive numbers like "50K+ Customers" to build trust.',
   VIDEO_OVERLAY_CONTENT: "Video Background Overlay Content",
   VISUAL_PREVIEW_TITLE: "Visual Preview & Placement",
   VISUAL_PREVIEW_INSTRUCTIONS:
     "1. Select a hotspot card from the list below (it will highlight in purple). 2. Click anywhere on the image preview to position the selected hotspot. If no card is selected, clicking will add a new hotspot.",
   LOOKBOOK_MAP_ALT: "Lookbook Interactive Map",
-  UPLOAD_LOOKBOOK_PROMPT:
-    "Upload a Main Lookbook Image to enable visual hotspot placement.",
-  NO_HOTSPOTS:
-    "No hotspots added. Press Add Hotspot or click the image above to place interactive tags.",
+  LOOKBOOK_EMPTY_TITLE: "Interactive Lookbook",
+  LOOKBOOK_EMPTY_DESC: "Upload a main banner image above to unlock interactive product hotspots.",
+  NO_HOTSPOTS_TITLE: "No hotspots added",
+  NO_HOTSPOTS_DESC: 'Click "Add Hotspot" to start tagging products on your image.',
   NO_LINKS: "No links yet. Click Add Link.",
   LINK: "Link",
   SHOP_NOW: "Shop Now",
@@ -269,6 +270,14 @@ export const UiText = {
     YEARS: "Years",
     LIFETIME: "Lifetime",
   },
+  PLACEHOLDERS: {
+    FLASH_SALE: "e.g. FLASH SALE ENDS IN",
+    SHOP_SALE: "e.g. Shop the Sale",
+    STORE_PATH: "e.g. /store",
+    COUPON: "e.g. Use coupon FIRST10 for an extra 10% off!",
+    LINK_LABEL: "Label",
+    LINK_PATH: "/path",
+  },
   ORDERS: {
     TITLE: "Orders",
     PRINT_INVOICES: "Print Invoices",
@@ -474,6 +483,14 @@ export const UiText = {
       "We are verifying your session details. If this does not resolve quickly, your session may have expired. Please log in again to securely access your dashboard.",
     LOG_IN_AGAIN: "Log In Again",
   },
+  NO_FOOTER_COLUMNS_TITLE: "No Footer Columns",
+  NO_FOOTER_COLUMNS_DESC: "Click 'Add Column' above to start building your footer navigation. You can group links under different headers.",
+  NO_CONTACT_METHODS_TITLE: "No Contact Methods",
+  NO_CONTACT_METHODS_DESC: "Add your phone number, email, or physical address so customers can easily reach you.",
+  NO_CORE_VALUES_TITLE: "No Core Values",
+  NO_CORE_VALUES_DESC: "Click 'Add Core Value' to list the principles that drive your brand.",
+  NO_MISSION_ITEMS_TITLE: "No Mission Items",
+  NO_MISSION_ITEMS_DESC: "Click 'Add Box' to define key mission statements or goals for your brand.",
 };
 
 export const SHIPPING_TEXT = {

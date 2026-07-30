@@ -3,6 +3,7 @@ import Script from "next/script";
 // @ts-ignore
 import "./globals.css";
 import ReduxProviders from "@/app/StoreProvider";
+import ReactQueryProvider from "@/app/ReactQueryProvider";
 import {
   DEFAULT_LANG,
   ENV_DEVELOPMENT,
@@ -35,7 +36,9 @@ export default function RootLayout({
           />
         )}
         <Script src="https://checkout.razorpay.com/v1/checkout.js" />
-        <ReduxProviders>{children}</ReduxProviders>
+        <ReactQueryProvider>
+          <ReduxProviders>{children}</ReduxProviders>
+        </ReactQueryProvider>
       </body>
     </html>
   );

@@ -2,8 +2,6 @@ import { CmsDataKey } from "@/constants/cms";
 
 import { CmsSection } from "./Section";
 import { AddBtn } from "./AddBtn";
-
-import { HeroBgStyle, HeroLayout } from "@/components/customer/homepage";
 import { ListCard } from "./ListCard";
 import { InputField } from "./InputField";
 import { SelectField } from "./SelectField";
@@ -11,12 +9,44 @@ import { UiText } from "@/constants/ui-text";
 import { ColorField } from "./ColorField";
 import { SlideQueryPicker } from "./SlideQueryPicker";
 import { ImageUploadField } from "./ImageUploadField";
-import { Trash2, X } from "lucide-react";
+import {
+  Trash2,
+  X,
+  LayoutPanelLeft,
+  MousePointerClick,
+  Plus,
+} from "lucide-react";
 import { ProductPreviewCard } from "./ProductPreviewCard";
 import { UILabels } from "@/constants/ui-labels";
 import { useEffect, useState } from "react";
 import AxiosAPI from "@/lib/axios";
 import { toDatetimeLocal } from "@/lib/utils";
+import { HeroBgStyle, HeroLayout, HomeCategories } from "@/utils/Types";
+import { CategoryCard } from "@/components/customer/homepage/CategoryCard";
+import { MobileCategoryPill } from "@/components/customer/homepage/MobileCategoryPill";
+
+export const TRUST_STRIP_BG_OPTIONS = [
+  { value: "bg-white", label: "White" },
+  { value: "bg-gray-50", label: "Light Gray" },
+  { value: "bg-[#faf9f6]", label: "Warm White" },
+];
+
+export const TRUST_STRIP_LAYOUT_OPTIONS = [
+  { value: "default", label: "Default Grid" },
+  { value: "minimal", label: "Minimalist" },
+];
+
+export const TRUST_STRIP_ICON_OPTIONS = [
+  { value: "shipping", label: UiText.ICONS.SHIPPING },
+  { value: "security", label: UiText.ICONS.SECURITY },
+  { value: "quality", label: UiText.ICONS.QUALITY },
+  { value: "support", label: UiText.ICONS.SUPPORT },
+  { value: "warranty", label: "Warranty" },
+  { value: "gst", label: "GST Billing" },
+  { value: "delivery", label: "Delivery" },
+  { value: "replacement", label: "Replacement" },
+  { value: "default", label: UiText.ICONS.DEFAULT },
+];
 
 export const CmsHomeTab = ({
   data,
@@ -40,6 +70,8 @@ export const CmsHomeTab = ({
   setSelectedHotspotId: (id: any) => void;
 }) => {
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
+  const [previewCategories, setPreviewCategories] = useState<HomeCategories[]>([]);
+
   useEffect(() => {
     AxiosAPI.get("/v1/products/options")
       .then((res) => {
@@ -49,6 +81,14 @@ export const CmsHomeTab = ({
         setProducts(list);
       })
       .catch(() => setProducts([]));
+
+    AxiosAPI.get("/v1/categories/homepage?limit=3", { headers: { "x-suppress-toast": true } })
+      .then((res) => {
+        if (res.data && Array.isArray(res.data.data)) {
+          setPreviewCategories(res.data.data);
+        }
+      })
+      .catch(() => setPreviewCategories([]));
   }, []);
   return (
     <>
@@ -59,6 +99,7 @@ export const CmsHomeTab = ({
             onClick={() =>
               addItem(CmsDataKey.HERO_SLIDES, {
                 image_url: "",
+                mobile_image_url: "",
                 title: "",
                 subtitle: "",
                 btn_text: "Shop Now",
@@ -73,9 +114,36 @@ export const CmsHomeTab = ({
         }
       >
         {(data?.[CmsDataKey.HERO_SLIDES] || []).length === 0 && (
-          <p className="text-center text-gray-400 text-theme-body-sm py-8">
-            {UiText.NO_SLIDES}
-          </p>
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+            <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center mb-4">
+              <LayoutPanelLeft className="w-8 h-8 text-gray-400" />
+            </div>
+            <h4 className="text-lg font-semibold text-gray-900 mb-2">
+              {UiText.NO_SLIDES_TITLE}
+            </h4>
+            <p className="text-sm text-gray-500 max-w-sm mb-6">
+              {UiText.NO_SLIDES_DESC}
+            </p>
+            <button
+              onClick={() =>
+                addItem(CmsDataKey.HERO_SLIDES, {
+                  image_url: "",
+                  mobile_image_url: "",
+                  title: "",
+                  subtitle: "",
+                  btn_text: "Shop Now",
+                  search_query: "",
+                  layout: HeroLayout.CENTER_OVERLAY,
+                  bg_style: HeroBgStyle.GRADIENT,
+                  bg_color: "",
+                })
+              }
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-black text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              {UiText.ADD_FIRST_SLIDE}
+            </button>
+          </div>
         )}
         {(data?.[CmsDataKey.HERO_SLIDES] || []).map(
           (slide: any, idx: number) => (
@@ -84,7 +152,7 @@ export const CmsHomeTab = ({
               onRemove={() => removeItem(CmsDataKey.HERO_SLIDES, slide.id)}
             >
               <div className="md:col-span-2">
-                <p className="text-theme-tiny font-bold text-purple-500 uppercase tracking-widest mb-1">
+                <p className="text-theme-tiny font-bold text-slate-900 uppercase tracking-widest mb-1">
                   Slide {idx + 1}
                 </p>
               </div>
@@ -175,18 +243,126 @@ export const CmsHomeTab = ({
                   )
                 }
               />
-              <div className="md:col-span-2">
+              <div className="md:col-span-1">
                 <ImageUploadField
-                  label={UILabels.FIELDS.SLIDE_BANNER_IMAGE}
+                  label={UILabels.FIELDS.SLIDE_BANNER_IMAGE + " (Desktop)"}
                   value={slide.image_url || ""}
                   onChange={(v: string) =>
                     updateItem(CmsDataKey.HERO_SLIDES, slide.id, "image_url", v)
                   }
                 />
               </div>
+              <div className="md:col-span-1">
+                <ImageUploadField
+                  label={
+                    UILabels.FIELDS.SLIDE_BANNER_IMAGE + " (Mobile - Optional)"
+                  }
+                  value={slide.mobile_image_url || ""}
+                  onChange={(v: string) =>
+                    updateItem(
+                      CmsDataKey.HERO_SLIDES,
+                      slide.id,
+                      "mobile_image_url",
+                      v,
+                    )
+                  }
+                />
+              </div>
             </ListCard>
           ),
         )}
+      </CmsSection>
+
+      <CmsSection title={UILabels.SECTIONS.CATEGORIES_SECTION}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SelectField
+            label="Desktop Card Aspect Ratio"
+            value={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP] || "aspect-[3/4]"}
+            onChange={(v: string) => set(CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP, v)}
+            options={[
+              { value: "aspect-[3/4]", label: "Portrait (3:4)" },
+              { value: "aspect-square", label: "Square (1:1)" },
+              { value: "aspect-[4/3]", label: "Landscape (4:3)" },
+              { value: "aspect-[16/9]", label: "Wide (16:9)" },
+              { value: "aspect-auto", label: "Auto" },
+            ]}
+          />
+          <SelectField
+            label="Mobile Card Aspect Ratio"
+            value={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE] || "aspect-square"}
+            onChange={(v: string) => set(CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE, v)}
+            options={[
+              { value: "aspect-[3/4]", label: "Portrait (3:4)" },
+              { value: "aspect-square", label: "Square (1:1)" },
+              { value: "aspect-[4/3]", label: "Landscape (4:3)" },
+              { value: "aspect-[16/9]", label: "Wide (16:9)" },
+              { value: "aspect-auto", label: "Auto" },
+            ]}
+          />
+          <SelectField
+            label="Desktop Card Border Radius"
+            value={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP] || "rounded-2xl"}
+            onChange={(v: string) => set(CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP, v)}
+            options={[
+              { value: "rounded-none", label: "None (Square)" },
+              { value: "rounded-md", label: "Small" },
+              { value: "rounded-2xl", label: "Large" },
+              { value: "rounded-full", label: "Pill / Circle" },
+            ]}
+          />
+          <SelectField
+            label="Mobile Card Border Radius"
+            value={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE] || "rounded-2xl"}
+            onChange={(v: string) => set(CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE, v)}
+            options={[
+              { value: "rounded-none", label: "None (Square)" },
+              { value: "rounded-md", label: "Small" },
+              { value: "rounded-2xl", label: "Large" },
+              { value: "rounded-full", label: "Pill / Circle" },
+            ]}
+          />
+        </div>
+
+        <div className="mt-8 border-t border-gray-100 pt-6">
+          <h4 className="text-sm font-semibold text-gray-700 mb-4">Live Preview</h4>
+          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+            {previewCategories.length === 0 ? (
+              <p className="text-gray-400 text-sm text-center">Loading preview...</p>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Desktop View</p>
+                  <div className="flex gap-4 overflow-x-auto pb-4 items-center border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
+                    {previewCategories.slice(0, 3).map((cat, idx) => (
+                      <div key={idx} className="w-[140px] shrink-0 pointer-events-none">
+                        <CategoryCard
+                          cat={cat}
+                          idx={idx}
+                          aspectRatio={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP] || "aspect-[3/4]"}
+                          borderRadius={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP] || "rounded-2xl"}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Mobile View</p>
+                  <div className="flex gap-3 overflow-x-auto pb-4 items-center max-w-[320px] bg-white p-4 rounded-[2rem] border-[4px] border-gray-800 shadow-xl">
+                    {previewCategories.slice(0, 3).map((cat, idx) => (
+                      <div key={idx} className="shrink-0 pointer-events-none scale-90 origin-left">
+                        <MobileCategoryPill
+                          cat={cat}
+                          aspectRatio={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE] || "aspect-square"}
+                          borderRadius={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE] || "rounded-2xl"}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </CmsSection>
 
       <CmsSection title={UILabels.SECTIONS.MIDDLE_PROMO_BANNER}>
@@ -424,9 +600,14 @@ export const CmsHomeTab = ({
               ),
             )}
             {!(data.brand_highlight_stats || []).length && (
-              <p className="text-center text-theme-caption text-gray-400 py-3">
-                {UiText.NO_STATS}
-              </p>
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  {UiText.NO_STATS_TITLE}
+                </p>
+                <p className="text-xs text-gray-400 mb-4">
+                  {UiText.NO_STATS_DESC}
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -556,7 +737,7 @@ export const CmsHomeTab = ({
                         }}
                         className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full border border-white flex items-center justify-center text-theme-tiny font-black shadow-md cursor-pointer transition-all ${
                           isSelected
-                            ? "bg-purple-600 text-white scale-125 ring-2 ring-purple-400 ring-offset-1"
+                            ? "bg-slate-900 text-white scale-125 ring-2 ring-purple-400 ring-offset-1"
                             : "bg-black/60 text-white hover:bg-black/85"
                         }`}
                       >
@@ -568,8 +749,16 @@ export const CmsHomeTab = ({
               </div>
             </div>
           ) : (
-            <div className="mb-6 bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-6 text-center text-theme-caption text-gray-400">
-              {UiText.UPLOAD_LOOKBOOK_PROMPT}
+            <div className="mb-6 bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-2xl p-10 flex flex-col items-center justify-center text-center">
+              <div className="w-12 h-12 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center mb-3">
+                <MousePointerClick className="w-5 h-5 text-gray-400" />
+              </div>
+              <h5 className="text-sm font-semibold text-gray-700 mb-1">
+                {UiText.LOOKBOOK_EMPTY_TITLE}
+              </h5>
+              <p className="text-xs text-gray-500 max-w-xs">
+                {UiText.LOOKBOOK_EMPTY_DESC}
+              </p>
             </div>
           )}
 
@@ -605,7 +794,7 @@ export const CmsHomeTab = ({
                     onClick={() => setSelectedHotspotId(hs.id)}
                     className={`flex flex-col gap-3 p-4 rounded-xl border relative cursor-pointer transition-all ${
                       isSelected
-                        ? "bg-purple-50/40 border-purple-300 ring-1 ring-purple-300 shadow-sm"
+                        ? "bg-slate-50/40 border-slate-300 ring-1 ring-purple-300 shadow-sm"
                         : "bg-gray-50 border-gray-150 hover:bg-gray-100/70"
                     }`}
                   >
@@ -734,9 +923,14 @@ export const CmsHomeTab = ({
               },
             )}
             {!(data?.[CmsDataKey.LOOKBOOK_HOTSPOTS] || []).length && (
-              <p className="text-center text-theme-caption text-gray-400 py-3">
-                {UiText.NO_HOTSPOTS}
-              </p>
+              <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <p className="text-sm font-medium text-gray-600 mb-1">
+                  {UiText.NO_HOTSPOTS_TITLE}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {UiText.NO_HOTSPOTS_DESC}
+                </p>
+              </div>
             )}
           </div>
         </div>
@@ -792,152 +986,7 @@ export const CmsHomeTab = ({
         </div>
       </CmsSection>
 
-      <CmsSection title={UILabels.SECTIONS.TRUST__SOCIAL_PROOF_SECTION}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputField
-            label={UILabels.FIELDS.SOCIAL_PROOF_HEADER_TITLE}
-            value={data?.[CmsDataKey.SOCIAL_PROOF_TITLE] || ""}
-            onChange={(v: string) => set(CmsDataKey.SOCIAL_PROOF_TITLE, v)}
-          />
-          <InputField
-            label={UILabels.FIELDS.EYEBROW_TAG__SUBTEXT}
-            value={data?.[CmsDataKey.SOCIAL_PROOF_EYEBROW] || ""}
-            onChange={(v: string) => set(CmsDataKey.SOCIAL_PROOF_EYEBROW, v)}
-          />
-        </div>
-
-        <div className="mt-5 border-t border-gray-100 pt-5">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-theme-caption font-bold text-gray-500 uppercase">
-              {UiText.CUSTOMER_TESTIMONIALS}
-            </h4>
-
-            <AddBtn
-              onClick={() =>
-                set(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS, [
-                  ...(data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS] || []),
-                  {
-                    id: Date.now(),
-                    name: "",
-                    location: "",
-                    text: "",
-                    rating: 5,
-                    avatar: "",
-                  },
-                ])
-              }
-              label={UILabels.FIELDS.ADD_TESTIMONIAL}
-            />
-          </div>
-          <div className="space-y-4">
-            {(data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS] || []).map(
-              (t: any, tIdx: number) => (
-                <div
-                  key={t.id || tIdx}
-                  className="bg-gray-50 border border-gray-100 rounded-xl p-4 relative"
-                >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      set(
-                        "social_proof_testimonials",
-                        data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS].filter(
-                          (x: any) => x.id !== t.id,
-                        ),
-                      )
-                    }
-                    className="absolute right-3 top-3 text-red-400 hover:text-red-600"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputField
-                      label={UILabels.FIELDS.CUSTOMER_NAME}
-                      value={t.name}
-                      onChange={(v: string) =>
-                        set(
-                          "social_proof_testimonials",
-                          data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS].map(
-                            (x: any) => (x.id === t.id ? { ...x, name: v } : x),
-                          ),
-                        )
-                      }
-                    />
-                    <InputField
-                      label={UILabels.FIELDS.LOCATION}
-                      value={t.location}
-                      onChange={(v: string) =>
-                        set(
-                          "social_proof_testimonials",
-                          data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS].map(
-                            (x: any) =>
-                              x.id === t.id ? { ...x, location: v } : x,
-                          ),
-                        )
-                      }
-                    />
-                    <div>
-                      <label className="block text-theme-caption font-bold text-gray-500 mb-1.5">
-                        {UiText.RATING_1_5}
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="5"
-                        value={t.rating}
-                        onChange={(e) =>
-                          set(
-                            "social_proof_testimonials",
-                            data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS].map(
-                              (x: any) =>
-                                x.id === t.id
-                                  ? {
-                                      ...x,
-                                      rating: parseInt(e.target.value) || 5,
-                                    }
-                                  : x,
-                            ),
-                          )
-                        }
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-theme-caption focus:outline-none"
-                      />
-                    </div>
-                    <InputField
-                      label={UILabels.FIELDS.AVATAR_IMAGE_URL_OPTIONAL}
-                      value={t.avatar}
-                      onChange={(v: string) =>
-                        set(
-                          "social_proof_testimonials",
-                          data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS].map(
-                            (x: any) =>
-                              x.id === t.id ? { ...x, avatar: v } : x,
-                          ),
-                        )
-                      }
-                    />
-                    <div className="md:col-span-2">
-                      <InputField
-                        label={UILabels.FIELDS.TESTIMONIAL_QUOTE__TEXT}
-                        value={t.text}
-                        onChange={(v: string) =>
-                          set(
-                            "social_proof_testimonials",
-                            data?.[CmsDataKey.SOCIAL_PROOF_TESTIMONIALS].map(
-                              (x: any) =>
-                                x.id === t.id ? { ...x, text: v } : x,
-                            ),
-                          )
-                        }
-                        textarea
-                      />
-                    </div>
-                  </div>
-                </div>
-              ),
-            )}
-          </div>
-        </div>
-
+      <CmsSection title="Trust Strip Configuration">
         <div className="mt-5 border-t border-gray-100 pt-5">
           <div className="flex justify-between items-center mb-3">
             <h4 className="text-theme-caption font-bold text-gray-500 uppercase">
@@ -992,28 +1041,7 @@ export const CmsHomeTab = ({
                           ),
                         )
                       }
-                      options={[
-                        {
-                          value: "shipping",
-                          label: UiText.ICONS.SHIPPING,
-                        },
-                        {
-                          value: "security",
-                          label: UiText.ICONS.SECURITY,
-                        },
-                        {
-                          value: "quality",
-                          label: UiText.ICONS.QUALITY,
-                        },
-                        {
-                          value: "support",
-                          label: UiText.ICONS.SUPPORT,
-                        },
-                        {
-                          value: "default",
-                          label: UiText.ICONS.DEFAULT,
-                        },
-                      ]}
+                      options={TRUST_STRIP_ICON_OPTIONS}
                     />
                     <InputField
                       label={UILabels.FIELDS.BADGE_TITLE}
@@ -1095,7 +1123,7 @@ export const CmsHomeTab = ({
                 return (
                   <div
                     key={productId}
-                    className="flex items-center gap-1.5 bg-purple-50 text-purple-700 text-theme-caption font-bold px-3 py-1.5 rounded-full border border-purple-100 shadow-sm"
+                    className="flex items-center gap-1.5 bg-slate-50 text-slate-900 text-theme-caption font-bold px-3 py-1.5 rounded-full border border-purple-100 shadow-sm"
                   >
                     <span>{p ? p.name : productId}</span>
                     <button

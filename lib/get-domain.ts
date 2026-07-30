@@ -21,7 +21,12 @@ export const getCompanyDomain = async (): Promise<string> => {
     return isDev ? companyDomain : "";
   }
 
-  if (isDev && rawHost === "localhost") {
+  if (isDev && (rawHost === "localhost" || rawHost === "127.0.0.1")) {
+    return companyDomain;
+  }
+
+  // Fallback for when NODE_ENV is production but testing locally
+  if (rawHost === "localhost" || rawHost === "127.0.0.1") {
     return companyDomain;
   }
 

@@ -8,6 +8,7 @@ import {
   Users,
   ShoppingCart,
   Calculator,
+  Plus,
 } from "lucide-react";
 import { Coupon } from "@/utils/Types";
 import { COUPON_CARD_TEXT } from "@/constants/vendorText";
@@ -17,12 +18,14 @@ export interface CouponCardListProps {
   coupons: Coupon[];
   isLoading: boolean;
   onEdit: (id: string) => void;
+  onAdd?: () => void;
 }
 
 export const CouponCardList = ({
   coupons,
   isLoading,
   onEdit,
+  onAdd,
 }: CouponCardListProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -57,14 +60,24 @@ export const CouponCardList = ({
           <Loader2 className="animate-spin text-gray-400" size={30} />
         </div>
       ) : !coupons || coupons.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 bg-white border border-gray-200 rounded-2xl border-dashed">
-          <Tag size={40} className="text-gray-300 mb-3" />
-          <p className="text-theme-body-sm font-medium text-gray-600">
+        <div className="flex flex-col items-center justify-center py-16 bg-white border border-gray-100 rounded-2xl border-dashed shadow-sm">
+          <div className="bg-gray-50 p-4 rounded-full border border-gray-100 shadow-inner mb-4">
+            <Tag size={32} className="text-gray-300" />
+          </div>
+          <p className="text-theme-body font-bold text-gray-800">
             {COUPON_CARD_TEXT.EMPTY.TITLE}
           </p>
-          <p className="text-theme-caption text-gray-400 mt-1">
+          <p className="text-theme-body-sm font-medium text-gray-500 mt-1 max-w-sm text-center mb-6">
             {COUPON_CARD_TEXT.EMPTY.DESC}
           </p>
+          {onAdd && (
+            <button 
+              onClick={onAdd}
+              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-100 transition-all duration-200 ease-out flex items-center gap-2"
+            >
+              <Plus size={18} /> {COUPON_CARD_TEXT.EMPTY.ADD_BTN}
+            </button>
+          )}
         </div>
       ) : (
         // Used Tailwind arbitrary variants to hide the scrollbar cleanly
@@ -81,7 +94,7 @@ export const CouponCardList = ({
               return (
                 <div
                   key={coupon.id}
-                  className="min-w-[340px] max-w-[340px] bg-white border border-gray-200 rounded-2xl p-5 shadow-sm snap-start flex-shrink-0 relative flex flex-col justify-between hover:shadow-md transition-shadow"
+                  className="min-w-[340px] max-w-[340px] bg-white border border-gray-100 rounded-2xl p-6 shadow-sm snap-start flex-shrink-0 relative flex flex-col justify-between hover:shadow-md hover:-translate-y-1 transition-all duration-200 ease-out"
                 >
                   <div>
                     {/* Header: Code & Badges */}
@@ -117,8 +130,8 @@ export const CouponCardList = ({
 
                     <div className="space-y-3 mb-5">
                       {/* Primary Highlight */}
-                      <div className="bg-blue-50/50 rounded-xl p-3 border border-blue-100 flex justify-between items-center">
-                        <span className="text-blue-800 font-semibold text-theme-body-sm">
+                      <div className="bg-blue-50/70 rounded-xl p-3.5 border border-blue-100/50 flex justify-between items-center shadow-inner">
+                        <span className="text-blue-800 font-bold text-theme-body-sm">
                           {COUPON_CARD_TEXT.DISCOUNT.LABEL}
                         </span>
                         <span className="font-black text-blue-600 text-theme-h6">

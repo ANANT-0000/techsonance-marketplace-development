@@ -14,6 +14,7 @@ export const UILabels = {
     HERO_BLOCK_LEGACY__USED_IF_NO_CAROUSEL_SLIDES_ABOVE:
       "Hero Block (Legacy — used if no carousel slides above)",
     HERO_CAROUSEL_SLIDES: "Hero Carousel Slides",
+    CATEGORIES_SECTION: "Categories Section",
     INTERACTIVE_HERO_OPTIONS_ENHANCED: "Interactive Hero Options (Enhanced)",
     MIDDLE_PROMO_BANNER: "Middle Promo Banner",
     MISSION_DELIVERABLES: "Mission Deliverables",

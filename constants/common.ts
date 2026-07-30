@@ -1,10 +1,5 @@
-// ============================================================
-// ASSET PATHS (served from /public/assets/)
-// ============================================================
-
 import { CountryCompliance, Product } from "@/utils/Types";
 
-export const IMAGE_PLACEHOLDER = "/assets/image-placeholder.svg";
 export const BRAND_LOGO = "/assets/e-commerce_brand_logo.png";
 export const CUSTOMER_LOGIN_POSTER = "/assets/customer form poster 2.svg";
 export const TS_LOGO = "/assets/ts_logo.png";
@@ -46,10 +41,8 @@ export const youtube = "/assets/youtube icon.png";
 export const toggle_light = "/assets/toggle-light.png";
 export const toggle_dark = "/assets/toggle-dark.png";
 
-// ============================================================
 // TYPES  (Re-exported from utils/Types.ts)
-// ============================================================
-
+// =======================================================
 export { UserRole, Permission } from "@/utils/Types";
 export type {
   VendorUser,

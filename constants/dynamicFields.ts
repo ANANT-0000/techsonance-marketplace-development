@@ -581,15 +581,27 @@ export const AUTH_LOG_FILTERS = [
 export const PRODUCT_FORM_PRICING_FIELDS = [
   {
     name: "basePrice",
-    label: "Base Price (₹)",
+    label: "Selling Price (₹)",
     type: "number",
     placeholder: "0.00",
   },
   {
-    name: "discountPercent",
-    label: "Discount (%)",
+    name: "compareAtPrice",
+    label: "Compare At Price (₹)",
     type: "number",
-    placeholder: "0",
+    placeholder: "0.00",
+  },
+  {
+    name: "saleStartsAt",
+    label: "Sale Starts At",
+    type: "datetime-local",
+    placeholder: "",
+  },
+  {
+    name: "saleEndsAt",
+    label: "Sale Ends At",
+    type: "datetime-local",
+    placeholder: "",
   },
   { name: "stocks", label: "Stock Quantity", type: "number", placeholder: "0" },
   { name: "sku", label: "SKU", type: "text", placeholder: "Enter Sku" },

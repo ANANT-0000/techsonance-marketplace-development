@@ -4,11 +4,17 @@ import Image from "next/image";
 import { AUTH_TEXT } from "@/constants";
 import CustomerRegisterForm from "@/components/customer/CustomerRegisterForm";
 import { CUSTOMER_REGISTRATION_POSTER } from "@/constants/common";
+import { motion } from "framer-motion";
 
 export default function CustomerRegisterPage() {
   return (
-    <main className="flex justify-center items-center min-h-screen w-full p-4">
-      <div className="flex flex-col lg:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden max-w-5xl w-full">
+    <main className="flex justify-center items-center min-h-screen w-full bg-gradient-to-br from-gray-50 via-slate-50 to-gray-100 p-4 md:p-8">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="flex flex-col lg:flex-row bg-white rounded-3xl shadow-2xl shadow-slate-200/60 overflow-hidden max-w-5xl w-full"
+      >
         {/* Form Section */}
         <div className="flex flex-col px-6 py-8 lg:px-12 lg:py-10 justify-center flex-1">
           <div className="mb-8">
@@ -42,7 +48,7 @@ export default function CustomerRegisterPage() {
             priority
           />
         </div>
-      </div>
+      </motion.div>
     </main>
   );
 }

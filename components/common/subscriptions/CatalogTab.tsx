@@ -1,5 +1,15 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { Layers, Loader2, Plus, Edit3, Trash2, Shield, Settings, Check, AlertTriangle } from "lucide-react";
+import {
+  Layers,
+  Loader2,
+  Plus,
+  Edit3,
+  Trash2,
+  Shield,
+  Settings,
+  Check,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import AxiosAPI from "@/lib/axios";
-import { SUBSCRIBATION_TEXT } from "@/constants/adminText";
+import { SUBSCRIBATION_TEXT } from "@/constants";
 
 // Value Type and Enforcement Mode types
 type ValueType = "boolean" | "counter" | "rate" | "gauge";
@@ -58,12 +68,14 @@ export default function CatalogTab({ token }: CatalogTabProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   // Edit/Create state
-  const [editingDefinition, setEditingDefinition] = useState<FeatureDefinition | null>(null);
+  const [editingDefinition, setEditingDefinition] =
+    useState<FeatureDefinition | null>(null);
   const [featureKey, setFeatureKey] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [description, setDescription] = useState("");
   const [valueType, setValueType] = useState<ValueType>("boolean");
-  const [enforcementMode, setEnforcementMode] = useState<EnforcementMode>("hard");
+  const [enforcementMode, setEnforcementMode] =
+    useState<EnforcementMode>("hard");
   const [isActive, setIsActive] = useState(true);
 
   // Load feature definitions from API
@@ -71,11 +83,14 @@ export default function CatalogTab({ token }: CatalogTabProps) {
     if (!token) return;
     setUiState(CatalogUiState.LOADING);
     try {
-      const res = await AxiosAPI.get("/v1/admin/subscription-plans/feature-definitions", {
-        headers: {
-          "x-suppress-redirect": "true",
+      const res = await AxiosAPI.get(
+        "/v1/admin/subscription-plans/feature-definitions",
+        {
+          headers: {
+            "x-suppress-redirect": "true",
+          },
         },
-      });
+      );
       setDefinitions(Array.isArray(res.data?.data) ? res.data.data : []);
       setUiState(CatalogUiState.IDLE);
     } catch (err) {
@@ -143,7 +158,7 @@ export default function CatalogTab({ token }: CatalogTabProps) {
             headers: {
               "x-suppress-redirect": "true",
             },
-          }
+          },
         );
         toast.success(SUBSCRIBATION_TEXT.CATALOG.SUCCESS_UPDATE);
       } else {
@@ -155,7 +170,7 @@ export default function CatalogTab({ token }: CatalogTabProps) {
             headers: {
               "x-suppress-redirect": "true",
             },
-          }
+          },
         );
         toast.success(SUBSCRIBATION_TEXT.CATALOG.SUCCESS_CREATE);
       }
@@ -166,7 +181,7 @@ export default function CatalogTab({ token }: CatalogTabProps) {
         err?.response?.data?.message ||
           (editingDefinition
             ? SUBSCRIBATION_TEXT.CATALOG.FAILED_UPDATE
-            : SUBSCRIBATION_TEXT.CATALOG.FAILED_CREATE)
+            : SUBSCRIBATION_TEXT.CATALOG.FAILED_CREATE),
       );
     } finally {
       setIsSaving(false);
@@ -175,20 +190,30 @@ export default function CatalogTab({ token }: CatalogTabProps) {
 
   // Delete a feature definition
   const handleDelete = async (id: string, key: string) => {
-    if (!confirm(`${SUBSCRIBATION_TEXT.CATALOG.CONFIRM_DELETE}\nFeature: "${key}"`)) {
+    if (
+      !confirm(
+        `${SUBSCRIBATION_TEXT.CATALOG.CONFIRM_DELETE}\nFeature: "${key}"`,
+      )
+    ) {
       return;
     }
 
     try {
-      await AxiosAPI.delete(`/v1/admin/subscription-plans/feature-definitions/${id}`, {
-        headers: {
-          "x-suppress-redirect": "true",
+      await AxiosAPI.delete(
+        `/v1/admin/subscription-plans/feature-definitions/${id}`,
+        {
+          headers: {
+            "x-suppress-redirect": "true",
+          },
         },
-      });
+      );
       toast.success(SUBSCRIBATION_TEXT.CATALOG.SUCCESS_DELETE);
       loadDefinitions();
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || SUBSCRIBATION_TEXT.CATALOG.FAILED_DELETE);
+      toast.error(
+        err?.response?.data?.message ||
+          SUBSCRIBATION_TEXT.CATALOG.FAILED_DELETE,
+      );
     }
   };
 
@@ -230,8 +255,15 @@ export default function CatalogTab({ token }: CatalogTabProps) {
       ) : uiState === CatalogUiState.ERROR ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <AlertTriangle className="h-6 w-6 text-red-400" />
-          <p className="text-sm text-red-500">Failed to load feature definitions.</p>
-          <Button variant="outline" size="sm" onClick={loadDefinitions} className="text-xs">
+          <p className="text-sm text-red-500">
+            Failed to load feature definitions.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadDefinitions}
+            className="text-xs"
+          >
             Retry
           </Button>
         </div>
@@ -240,11 +272,19 @@ export default function CatalogTab({ token }: CatalogTabProps) {
           <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center">
             <Layers className="h-6 w-6 text-slate-400" />
           </div>
-          <p className="text-sm font-semibold text-slate-700">No feature definitions</p>
-          <p className="text-xs text-slate-400 text-center max-w-sm">
-            Create global catalog feature definitions to make them configurable on plan limit quota rules.
+          <p className="text-sm font-semibold text-slate-700">
+            No feature definitions
           </p>
-          <Button type="button" onClick={handleOpenCreate} size="sm" className="mt-2 text-xs">
+          <p className="text-xs text-slate-400 text-center max-w-sm">
+            Create global catalog feature definitions to make them configurable
+            on plan limit quota rules.
+          </p>
+          <Button
+            type="button"
+            onClick={handleOpenCreate}
+            size="sm"
+            className="mt-2 text-xs"
+          >
             Create First Feature
           </Button>
         </div>
@@ -253,17 +293,32 @@ export default function CatalogTab({ token }: CatalogTabProps) {
           <table className="w-full table-auto min-w-[800px] border-collapse text-left text-xs">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase">
-                <th className="p-3.5">{SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.KEY}</th>
-                <th className="p-3.5">{SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.DISPLAY_NAME}</th>
-                <th className="p-3.5">{SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.VALUE_TYPE}</th>
-                <th className="p-3.5">{SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.ENFORCEMENT}</th>
-                <th className="p-3.5">{SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.STATUS}</th>
-                <th className="p-3.5 text-center">{SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.ACTIONS}</th>
+                <th className="p-3.5">
+                  {SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.KEY}
+                </th>
+                <th className="p-3.5">
+                  {SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.DISPLAY_NAME}
+                </th>
+                <th className="p-3.5">
+                  {SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.VALUE_TYPE}
+                </th>
+                <th className="p-3.5">
+                  {SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.ENFORCEMENT}
+                </th>
+                <th className="p-3.5">
+                  {SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.STATUS}
+                </th>
+                <th className="p-3.5 text-center">
+                  {SUBSCRIBATION_TEXT.CATALOG.TABLE_HEADERS.ACTIONS}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {definitions.map((def) => (
-                <tr key={def.id} className="hover:bg-slate-50 transition-colors">
+                <tr
+                  key={def.id}
+                  className="hover:bg-slate-50 transition-colors"
+                >
                   {/* Feature Key */}
                   <td className="p-3.5 font-mono font-semibold text-slate-800">
                     {def.feature_key}
@@ -272,7 +327,9 @@ export default function CatalogTab({ token }: CatalogTabProps) {
                   {/* Display Name & Description */}
                   <td className="p-3.5">
                     <div>
-                      <p className="font-semibold text-slate-800">{def.display_name}</p>
+                      <p className="font-semibold text-slate-800">
+                        {def.display_name}
+                      </p>
                       {def.description && (
                         <p className="text-[10px] text-slate-450 mt-0.5 line-clamp-1">
                           {def.description}
@@ -289,10 +346,10 @@ export default function CatalogTab({ token }: CatalogTabProps) {
                         def.value_type === "boolean"
                           ? "bg-purple-50 text-purple-700 border-purple-100"
                           : def.value_type === "counter"
-                          ? "bg-blue-50 text-blue-700 border-blue-100"
-                          : def.value_type === "rate"
-                          ? "bg-amber-50 text-amber-700 border-amber-100"
-                          : "bg-teal-50 text-teal-700 border-teal-100"
+                            ? "bg-blue-50 text-blue-700 border-blue-100"
+                            : def.value_type === "rate"
+                              ? "bg-amber-50 text-amber-700 border-amber-100"
+                              : "bg-teal-50 text-teal-700 border-teal-100"
                       }`}
                     >
                       {def.value_type}
@@ -358,7 +415,10 @@ export default function CatalogTab({ token }: CatalogTabProps) {
       )}
 
       {/* CREATE/EDIT FEATURE DEFINITION DIALOG */}
-      <Dialog open={isModalOpen} onOpenChange={(open) => !open && setIsModalOpen(false)}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(open) => !open && setIsModalOpen(false)}
+      >
         <DialogContent className="sm:max-w-md border-slate-200">
           <form onSubmit={handleSubmit} className="space-y-4">
             <DialogHeader className="border-b border-slate-100 pb-3 mb-4">
@@ -368,14 +428,18 @@ export default function CatalogTab({ token }: CatalogTabProps) {
                   : SUBSCRIBATION_TEXT.CATALOG.MODAL_CREATE_TITLE}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Configure features catalog keys that can be checked in system checkpoints.
+                Configure features catalog keys that can be checked in system
+                checkpoints.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-3.5 text-slate-800">
               {/* Feature Key */}
               <div>
-                <Label htmlFor="feature_key" className="text-xs font-semibold block mb-1">
+                <Label
+                  htmlFor="feature_key"
+                  className="text-xs font-semibold block mb-1"
+                >
                   {SUBSCRIBATION_TEXT.CATALOG.LABEL_KEY}
                 </Label>
                 <Input
@@ -390,7 +454,10 @@ export default function CatalogTab({ token }: CatalogTabProps) {
 
               {/* Display Name */}
               <div>
-                <Label htmlFor="display_name" className="text-xs font-semibold block mb-1">
+                <Label
+                  htmlFor="display_name"
+                  className="text-xs font-semibold block mb-1"
+                >
                   {SUBSCRIBATION_TEXT.CATALOG.LABEL_DISPLAY}
                 </Label>
                 <Input
@@ -404,7 +471,10 @@ export default function CatalogTab({ token }: CatalogTabProps) {
 
               {/* Description */}
               <div>
-                <Label htmlFor="description" className="text-xs font-semibold block mb-1">
+                <Label
+                  htmlFor="description"
+                  className="text-xs font-semibold block mb-1"
+                >
                   {SUBSCRIBATION_TEXT.CATALOG.LABEL_DESC}
                 </Label>
                 <Input
@@ -420,40 +490,66 @@ export default function CatalogTab({ token }: CatalogTabProps) {
               <div className="grid grid-cols-2 gap-3">
                 {/* Value Type */}
                 <div>
-                  <Label htmlFor="value_type" className="text-xs font-semibold block mb-1">
+                  <Label
+                    htmlFor="value_type"
+                    className="text-xs font-semibold block mb-1"
+                  >
                     {SUBSCRIBATION_TEXT.CATALOG.LABEL_VALUE_TYPE}
                   </Label>
                   <Select
                     value={valueType}
                     onValueChange={(v) => setValueType(v as ValueType)}
                   >
-                    <SelectTrigger id="value_type" className="text-xs h-9 rounded-lg border-slate-200">
+                    <SelectTrigger
+                      id="value_type"
+                      className="text-xs h-9 rounded-lg border-slate-200"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="boolean" className="text-xs">Boolean (Toggle)</SelectItem>
-                      <SelectItem value="counter" className="text-xs">Counter (Accumulative)</SelectItem>
-                      <SelectItem value="rate" className="text-xs">Rate (Interval Resets)</SelectItem>
-                      <SelectItem value="gauge" className="text-xs">Gauge (Current Val)</SelectItem>
+                      <SelectItem value="boolean" className="text-xs">
+                        Boolean (Toggle)
+                      </SelectItem>
+                      <SelectItem value="counter" className="text-xs">
+                        Counter (Accumulative)
+                      </SelectItem>
+                      <SelectItem value="rate" className="text-xs">
+                        Rate (Interval Resets)
+                      </SelectItem>
+                      <SelectItem value="gauge" className="text-xs">
+                        Gauge (Current Val)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Enforcement Mode */}
                 <div>
-                  <Label htmlFor="enforcement_mode" className="text-xs font-semibold block mb-1">
+                  <Label
+                    htmlFor="enforcement_mode"
+                    className="text-xs font-semibold block mb-1"
+                  >
                     {SUBSCRIBATION_TEXT.CATALOG.LABEL_ENFORCEMENT}
                   </Label>
                   <Select
                     value={enforcementMode}
-                    onValueChange={(v) => setEnforcementMode(v as EnforcementMode)}
+                    onValueChange={(v) =>
+                      setEnforcementMode(v as EnforcementMode)
+                    }
                   >
-                    <SelectTrigger id="enforcement_mode" className="text-xs h-9 rounded-lg border-slate-200">
+                    <SelectTrigger
+                      id="enforcement_mode"
+                      className="text-xs h-9 rounded-lg border-slate-200"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="hard" className="text-xs">Hard (Hard Block)</SelectItem>
-                      <SelectItem value="soft" className="text-xs">Soft (Observability Only)</SelectItem>
+                      <SelectItem value="hard" className="text-xs">
+                        Hard (Hard Block)
+                      </SelectItem>
+                      <SelectItem value="soft" className="text-xs">
+                        Soft (Observability Only)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

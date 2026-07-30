@@ -29,6 +29,7 @@ import { RootState } from "@/lib/store";
 import { useAppSelector } from "@/hooks/reduxHooks";
 import { MARKETING_TEXT } from "@/constants/vendorText";
 import { VEDNOR_LOGIN_PATH, VEDNOR_REGISTER_PATH } from "@/constants";
+import { SessionErrorCard } from "@/components/vendor/SessionErrorCard";
 
 // --- Interfaces ---
 interface OverallMetrics {
@@ -96,12 +97,18 @@ export default function MarketingPage() {
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
   const [isLoadingCoupons, setIsLoadingCoupons] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [sessionError, setSessionError] = useState(false);
 
   const token = authToken();
 
   // Data Loaders
   const loadMetrics = useCallback(async () => {
-    if (!token) return;
+    if (!token) {
+      setSessionError(true);
+      setIsLoadingMetrics(false);
+      return;
+    }
+    setSessionError(false);
     try {
       const res = await fetchConversionMetrics(token as string);
       setOverallMetrics(res.data.data.overall);
@@ -113,7 +120,12 @@ export default function MarketingPage() {
   }, [token]);
 
   const loadCoupons = async () => {
-    if (!token) return;
+    if (!token) {
+      setSessionError(true);
+      setIsLoadingCoupons(false);
+      return;
+    }
+    setSessionError(false);
     try {
       const res = await fetchCoupons(token as string);
       setCoupons(res.data.data || []);
@@ -208,7 +220,7 @@ export default function MarketingPage() {
             </button>
 
             <button
-              className="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-100 transition-all flex items-center gap-2"
+              className="py-2.5 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-100 transition-all duration-200 ease-out flex items-center gap-2"
               onClick={openNewPromoModal}
             >
               <Plus size={18} /> {MARKETING_TEXT.HEADER.ADD_NEW_PROMO}
@@ -216,21 +228,24 @@ export default function MarketingPage() {
           </div>
         </header>
 
+        {/* Silent Failure Feedback Layer */}
+        {sessionError && <SessionErrorCard />}
+
         {/* Overviews Cards */}
         {isLoadingMetrics ? (
           <MetricsSkeleton count={4} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="flex justify-between items-start mb-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+              <div className="flex justify-between items-start mb-3">
                 <span className="text-theme-caption font-bold text-gray-400 uppercase tracking-wider">
                   {MARKETING_TEXT.METRICS.STORE_CONVERSION}
                 </span>
-                <span className="bg-emerald-50 text-emerald-600 p-2 rounded-lg">
-                  <Target size={18} />
+                <span className="bg-emerald-50 text-emerald-600 p-2.5 rounded-xl">
+                  <Target size={20} />
                 </span>
               </div>
-              <h3 className="text-theme-h4 font-bold text-gray-800">
+              <h3 className="text-theme-h3 font-black text-gray-800 tracking-tight">
                 {`${overallMetrics?.conversionRate || 0}%`}
               </h3>
               <p className="text-theme-caption text-gray-500 mt-1 font-medium">
@@ -238,16 +253,16 @@ export default function MarketingPage() {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="flex justify-between items-start mb-2">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+              <div className="flex justify-between items-start mb-3">
                 <span className="text-theme-caption font-bold text-gray-400 uppercase tracking-wider">
                   {MARKETING_TEXT.METRICS.ABANDONMENT_RATE}
                 </span>
-                <span className="bg-red-50 text-red-600 p-2 rounded-lg">
-                  <AlertTriangle size={18} />
+                <span className="bg-red-50 text-red-600 p-2.5 rounded-xl">
+                  <AlertTriangle size={20} />
                 </span>
               </div>
-              <h3 className="text-theme-h4 font-bold text-gray-800">
+              <h3 className="text-theme-h3 font-black text-gray-800 tracking-tight">
                 {`${overallMetrics?.abandonmentRate || 0}%`}
               </h3>
               <p className="text-theme-caption text-red-500 mt-1 font-medium">
@@ -255,16 +270,16 @@ export default function MarketingPage() {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="flex justify-between items-start mb-2">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+              <div className="flex justify-between items-start mb-3">
                 <span className="text-theme-caption font-bold text-gray-400 uppercase tracking-wider">
                   {MARKETING_TEXT.METRICS.ACTIVE_CARTS}
                 </span>
-                <span className="bg-blue-50 text-blue-600 p-2 rounded-lg">
-                  <ShoppingCart size={18} />
+                <span className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+                  <ShoppingCart size={20} />
                 </span>
               </div>
-              <h3 className="text-theme-h4 font-bold text-gray-800">
+              <h3 className="text-theme-h3 font-black text-gray-800 tracking-tight">
                 {overallMetrics?.totalCarts || 0}
               </h3>
               <p className="text-theme-caption text-gray-500 mt-1 font-medium">
@@ -272,16 +287,16 @@ export default function MarketingPage() {
               </p>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-              <div className="flex justify-between items-start mb-2">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow duration-200 ease-out">
+              <div className="flex justify-between items-start mb-3">
                 <span className="text-theme-caption font-bold text-gray-400 uppercase tracking-wider">
                   {MARKETING_TEXT.METRICS.COMPLETED_ORDERS}
                 </span>
-                <span className="bg-purple-50 text-purple-600 p-2 rounded-lg">
-                  <TrendingUp size={18} />
+                <span className="bg-purple-50 text-purple-600 p-2.5 rounded-xl">
+                  <TrendingUp size={20} />
                 </span>
               </div>
-              <h3 className="text-theme-h4 font-bold text-gray-800">
+              <h3 className="text-theme-h3 font-black text-gray-800 tracking-tight">
                 {overallMetrics?.totalOrders || 0}
               </h3>
               <p className="text-theme-caption text-gray-500 mt-1 font-medium">
@@ -296,11 +311,12 @@ export default function MarketingPage() {
           coupons={coupons}
           isLoading={isLoadingCoupons}
           onEdit={openEditPromoModal}
+          onAdd={openNewPromoModal}
         />
 
         {/* Funnel Table */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-8">
-          <div className="px-5 py-4 border-b border-gray-100">
+        <div className="relative bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mb-8">
+          <div className="px-6 py-5 border-b border-gray-50 bg-gray-50/50">
             <h2 className="font-bold text-theme-h6 text-gray-800">
               {MARKETING_TEXT.FUNNEL.TITLE}
             </h2>
@@ -332,14 +348,52 @@ export default function MarketingPage() {
                 {isLoadingMetrics ? (
                   <TableRowSkeleton columns={5} rows={4} />
                 ) : productConversions?.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={5}
-                      className="p-8 text-center text-gray-400 text-theme-body-sm"
-                    >
-                      {MARKETING_TEXT.FUNNEL.NO_DATA}
-                    </td>
-                  </tr>
+                  <>
+                    {[1, 2, 3].map((_, i) => (
+                      <tr
+                        key={`empty-${i}`}
+                        className="opacity-30 blur-[2px] pointer-events-none select-none border-b border-gray-100 last:border-none"
+                      >
+                        <td className="p-4 font-semibold text-theme-body-sm text-gray-300">
+                          {MARKETING_TEXT.FUNNEL.ZERO_STATE.PLACEHOLDER_VARIANT}
+                        </td>
+                        <td className="p-4 text-theme-body-sm text-gray-300 font-mono">
+                          {MARKETING_TEXT.FUNNEL.ZERO_STATE.SKU_PREFIX}{i + 1}
+                        </td>
+                        <td className="p-4 text-center font-medium text-gray-300">
+                          0
+                        </td>
+                        <td className="p-4 text-center font-medium text-gray-300">
+                          0
+                        </td>
+                        <td className="p-4">
+                          <span className="flex items-center gap-3">
+                            <span className="text-theme-body-sm font-bold text-gray-300">
+                              0%
+                            </span>
+                            <span className="w-24 h-2 rounded-full bg-gray-100 overflow-hidden" />
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td colSpan={5} className="p-0">
+                        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/50 backdrop-blur-[1px]">
+                          <div className="bg-white/90 border border-gray-100 shadow-md px-6 py-4 rounded-2xl flex flex-col items-center gap-2 max-w-sm text-center">
+                            <div className="bg-blue-50 p-3 rounded-full text-blue-600 mb-1">
+                              <Target size={24} />
+                            </div>
+                            <h4 className="font-bold text-gray-800">
+                              {MARKETING_TEXT.FUNNEL.ZERO_STATE.TITLE}
+                            </h4>
+                            <p className="text-theme-body-sm text-gray-500 font-medium">
+                              {MARKETING_TEXT.FUNNEL.ZERO_STATE.DESC}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </>
                 ) : (
                   productConversions?.map((product) => (
                     <tr

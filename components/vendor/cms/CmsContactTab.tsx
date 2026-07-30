@@ -6,6 +6,7 @@ import { CmsSection } from "./Section";
 
 import { InputField } from "./InputField";
 import { ImageUploadField } from "./ImageUploadField";
+import { PhoneCall } from "lucide-react";
 import { UILabels } from "@/constants/ui-labels";
 import { UiText } from "@/constants/ui-text";
 export const CmsContactTab = ({
@@ -66,18 +67,28 @@ export const CmsContactTab = ({
           />
         }
       >
+        
+        {(!data.list || data.list.length === 0) && (
+          <div className="flex flex-col items-center justify-center p-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl text-center">
+            <div className="w-12 h-12 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
+              <PhoneCall size={20} />
+            </div>
+            <h3 className="text-gray-900 font-semibold mb-1">{UiText.NO_CONTACT_METHODS_TITLE}</h3>
+            <p className="text-sm text-gray-500 max-w-sm">{UiText.NO_CONTACT_METHODS_DESC}</p>
+          </div>
+        )}
         {(data.list || []).map((c: any) => (
           <ListCard key={c.id} onRemove={() => removeItem("list", c.id)}>
-            <div>
+            <div className="min-w-0 flex flex-col">
               <label className="block text-theme-caption font-bold text-gray-500 mb-1.5">
-                Type
+                {UiText.TABLE_HEADER_TYPE}
               </label>
               <select
                 value={c.type}
                 onChange={(e) =>
                   updateItem("list", c.id, "type", e.target.value)
                 }
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-theme-body-sm"
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-theme-body-sm shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-slate-900 font-semibold text-gray-750"
               >
                 <option value="phone">{UiText.CONTACT_TYPES.PHONE}</option>
                 <option value="email">{UiText.CONTACT_TYPES.EMAIL}</option>

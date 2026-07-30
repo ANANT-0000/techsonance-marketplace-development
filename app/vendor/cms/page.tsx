@@ -3,8 +3,6 @@ import { useState, useEffect, useCallback, useRef, useReducer } from "react";
 import {
   Save,
   Loader2,
-  Plus,
-  Trash2,
   Globe,
   Languages,
   CheckCircle,
@@ -15,34 +13,18 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import AxiosAPI from "@/lib/axios";
 import { authToken } from "@/utils/authToken";
+import { getClientCompanyId } from "@/utils/getCompanyId";
+import { SessionErrorCard } from "@/components/vendor/SessionErrorCard";
 import { BrandingTab } from "@/components/vendor/BrandingTab";
-import {
-  HeroLayout,
-  HeroBgStyle,
-} from "@/components/customer/homepage/InteractiveHero";
 import { CmsDataKey } from "@/constants/cms";
-import { NAVBAR_CACHE_KEY } from "@/constants";
-import { UILabels } from "@/constants/ui-labels";
 import { UiText } from "@/constants/ui-text";
-import {
-  CmsSection,
-  AddBtn,
-  ListCard,
-  ProductPreviewCard,
-  SelectField,
-  ColorField,
-  SlideQueryPicker,
-  InputField,
-  ImageUploadField,
-} from "@/components/vendor/cms";
 import { CmsHomeTab } from "@/components/vendor/cms/CmsHomeTab";
-import { toDatetimeLocal } from "@/lib/utils";
-
 import { CmsFooterTab } from "@/components/vendor/cms/CmsFooterTab";
 import { CmsStoreTab } from "@/components/vendor/cms/CmsStoreTab";
 import { CmsAboutTab } from "@/components/vendor/cms/CmsAboutTab";
 import { CmsContactTab } from "@/components/vendor/cms/CmsContactTab";
 import { CmsNavbarTab } from "@/components/vendor/cms/CmsNavbarTab";
+import { CmsFiltersTab } from "@/components/vendor/cms/CmsFiltersTab";
 
 export enum PageType {
   HOME = "home",
@@ -52,6 +34,7 @@ export enum PageType {
   CONTACT = "contact",
   STORE = "store",
   THEME = "theme",
+  FILTERS = "filters",
 }
 
 export enum LangType {
@@ -72,7 +55,8 @@ interface CmsState {
   loading: boolean;
   saving: boolean;
   msg: { text: string; ok: boolean } | null;
-  data: CmsDataPayload;
+  data: Record<string, CmsDataPayload>;
+  dirty: Record<string, boolean>;
 }
 
 export enum CmsActionType {
@@ -85,26 +69,27 @@ export enum CmsActionType {
   SAVE_SUCCESS = "SAVE_SUCCESS",
   SAVE_FAILURE = "SAVE_FAILURE",
   SET_DATA_FIELD = "SET_DATA_FIELD",
-  SET_DATA_FULL = "SET_DATA_FULL",
+  SET_DIRTY = "SET_DIRTY",
   CLEAR_MESSAGE = "CLEAR_MESSAGE",
-}
-
-export interface SetDataFieldPayload {
-  key: string;
-  val: any;
 }
 
 type CmsAction =
   | { type: CmsActionType.SET_PAGE; payload: PageType }
   | { type: CmsActionType.SET_LANG; payload: LangType }
   | { type: CmsActionType.FETCH_START }
-  | { type: CmsActionType.FETCH_SUCCESS; payload: CmsDataPayload }
+  | {
+      type: CmsActionType.FETCH_SUCCESS;
+      payload: { key: string; data: CmsDataPayload };
+    }
   | { type: CmsActionType.FETCH_FAILURE; payload: string }
   | { type: CmsActionType.SAVE_START }
   | { type: CmsActionType.SAVE_SUCCESS; payload: string }
   | { type: CmsActionType.SAVE_FAILURE; payload: string }
-  | { type: CmsActionType.SET_DATA_FIELD; payload: SetDataFieldPayload }
-  | { type: CmsActionType.SET_DATA_FULL; payload: CmsDataPayload }
+  | {
+      type: CmsActionType.SET_DATA_FIELD;
+      payload: { key: string; field: string; val: any };
+    }
+  | { type: CmsActionType.SET_DIRTY; payload: { key: string; dirty: boolean } }
   | { type: CmsActionType.CLEAR_MESSAGE };
 
 const initialState: CmsState = {
@@ -114,6 +99,7 @@ const initialState: CmsState = {
   saving: false,
   msg: null,
   data: {},
+  dirty: {},
 };
 
 function cmsReducer(state: CmsState, action: CmsAction): CmsState {
@@ -125,7 +111,12 @@ function cmsReducer(state: CmsState, action: CmsAction): CmsState {
     case CmsActionType.FETCH_START:
       return { ...state, loading: true, msg: null };
     case CmsActionType.FETCH_SUCCESS:
-      return { ...state, loading: false, data: action.payload };
+      return {
+        ...state,
+        loading: false,
+        data: { ...state.data, [action.payload.key]: action.payload.data },
+        dirty: { ...state.dirty, [action.payload.key]: false },
+      };
     case CmsActionType.FETCH_FAILURE:
       return {
         ...state,
@@ -149,10 +140,20 @@ function cmsReducer(state: CmsState, action: CmsAction): CmsState {
     case CmsActionType.SET_DATA_FIELD:
       return {
         ...state,
-        data: { ...state.data, [action.payload.key]: action.payload.val },
+        data: {
+          ...state.data,
+          [action.payload.key]: {
+            ...(state.data[action.payload.key] || {}),
+            [action.payload.field]: action.payload.val,
+          },
+        },
+        dirty: { ...state.dirty, [action.payload.key]: true },
       };
-    case CmsActionType.SET_DATA_FULL:
-      return { ...state, data: action.payload };
+    case CmsActionType.SET_DIRTY:
+      return {
+        ...state,
+        dirty: { ...state.dirty, [action.payload.key]: action.payload.dirty },
+      };
     case CmsActionType.CLEAR_MESSAGE:
       return { ...state, msg: null };
     default:
@@ -168,6 +169,7 @@ const PAGES: PageType[] = [
   PageType.CONTACT,
   PageType.STORE,
   PageType.THEME,
+  PageType.FILTERS,
 ];
 
 const PAGE_LABELS: Record<PageType, string> = {
@@ -176,8 +178,9 @@ const PAGE_LABELS: Record<PageType, string> = {
   [PageType.FOOTER]: "Footer",
   [PageType.ABOUT]: "About Us",
   [PageType.CONTACT]: "Contact",
-  [PageType.STORE]: "Store",
+  [PageType.STORE]: "Promotions & Marketing",
   [PageType.THEME]: "Storefront Theme & Layout",
+  [PageType.FILTERS]: "Product Filters",
 };
 
 // ── Slide Query Picker ─────────────────────────────────────────────────────
@@ -191,15 +194,40 @@ interface CmsManagementPageProps {
 export default function CmsManagementPage({
   labels = UiText,
 }: CmsManagementPageProps) {
+  const companyId = getClientCompanyId();
+  const token = authToken();
   const [state, dispatch] = useReducer(cmsReducer, initialState);
-  const { page, lang, loading, saving, msg, data } = state;
+  const { page, lang, loading, saving, msg, data, dirty } = state;
+
+  const [mountedTabs, setMountedTabs] = useState<Set<PageType>>(
+    new Set([page]),
+  );
+  const customHandlers = useRef<
+    Record<string, { save?: () => Promise<void>; discard?: () => void }>
+  >({});
+
+  useEffect(() => {
+    setMountedTabs((prev) => new Set(prev).add(page));
+  }, [page]);
+
+  const dataKey = `${page}_${lang}`;
+  const currentData = data[dataKey] || {};
+  const isDirty = dirty[page] || dirty[dataKey] || false;
 
   const [selectedHotspotId, setSelectedHotspotId] = useState<any>(null);
 
-  const load = async () => {
-    if (page === PageType.THEME) {
-      dispatch({ type: CmsActionType.FETCH_SUCCESS, payload: {} });
+  const load = async (forceRefetch = false) => {
+    if (
+      page === PageType.THEME ||
+      page === PageType.NAVBAR ||
+      page === PageType.FILTERS
+    ) {
+      // Handled locally by custom tabs
       return;
+    }
+    const dKey = `${page}_${lang}`;
+    if (!forceRefetch && data[dKey]) {
+      return; // Use existing draft
     }
     dispatch({ type: CmsActionType.FETCH_START });
     try {
@@ -207,9 +235,15 @@ export default function CmsManagementPage({
       const cmsRow = res.data?.data ?? res.data;
       const raw = cmsRow?.content;
       let parsed = typeof raw === "string" ? JSON.parse(raw) : (raw ?? {});
-      dispatch({ type: CmsActionType.FETCH_SUCCESS, payload: parsed });
+      dispatch({
+        type: CmsActionType.FETCH_SUCCESS,
+        payload: { key: dKey, data: parsed },
+      });
     } catch {
-      dispatch({ type: CmsActionType.FETCH_SUCCESS, payload: {} });
+      dispatch({
+        type: CmsActionType.FETCH_SUCCESS,
+        payload: { key: dKey, data: {} },
+      });
     }
   };
 
@@ -217,41 +251,61 @@ export default function CmsManagementPage({
     load();
   }, [page, lang]);
 
-  const set = (key: string, val: any) =>
-    dispatch({ type: CmsActionType.SET_DATA_FIELD, payload: { key, val } });
+  const set = (field: string, val: any) =>
+    dispatch({
+      type: CmsActionType.SET_DATA_FIELD,
+      payload: { key: dataKey, field, val },
+    });
 
-  const saveDataNow = async (overrides?: { key: string; val: any }) => {
-    // Merge optional override (e.g. a freshly uploaded URL that hasn't hit state yet)
+  const saveDataNow = async (overrides?: { field: string; val: any }) => {
+    const dKey = `${page}_${lang}`;
+    const finalData = overrides
+      ? { ...currentData, [overrides.field]: overrides.val }
+      : currentData;
     const payload = {
       page_content_type: page,
       language: lang,
       title: `${PAGE_LABELS[page]} (${lang.toUpperCase()})`,
-      content: JSON.stringify(
-        overrides ? { ...data, [overrides.key]: overrides.val } : data,
-      ),
+      content: JSON.stringify(finalData),
       seo_meta: {},
     };
     await AxiosAPI.post("/v1/cms", payload);
+    dispatch({
+      type: CmsActionType.SET_DIRTY,
+      payload: { key: dKey, dirty: false },
+    });
     localStorage.removeItem(`techsonance_cms_${page}_${lang}`);
     localStorage.removeItem(`techsonance_cms_${page}`);
-    // Clear storefront navbar cache so changes reflect immediately
-    if (page === PageType.NAVBAR) {
-      localStorage.removeItem(`${NAVBAR_CACHE_KEY}_${lang}`);
-      localStorage.removeItem(NAVBAR_CACHE_KEY);
-    }
   };
 
-  // Factory: creates an onAutoSave callback bound to a specific flat CMS data key.
-  // When an image is uploaded to that field, the new URL is saved immediately to the
-  // backend (before React's state batch resolves) so it survives a page reload.
   const makeAutoSave =
-    (key: string) =>
+    (field: string) =>
     async (newUrl: string): Promise<void> => {
-      await saveDataNow({ key, val: newUrl });
+      await saveDataNow({ field, val: newUrl });
     };
 
-  const save = async (e: React.SubmitEvent) => {
-    e.preventDefault();
+  const save = async (e?: React.SyntheticEvent) => {
+    if (e) e.preventDefault();
+    if (customHandlers.current[page]?.save) {
+      dispatch({ type: CmsActionType.SAVE_START });
+      try {
+        await customHandlers.current[page].save!();
+        dispatch({
+          type: CmsActionType.SAVE_SUCCESS,
+          payload: labels.SAVE_SUCCESS,
+        });
+        dispatch({
+          type: CmsActionType.SET_DIRTY,
+          payload: { key: page, dirty: false },
+        });
+      } catch (err: any) {
+        dispatch({
+          type: CmsActionType.SAVE_FAILURE,
+          payload: `${labels.SAVE_FAILED_PREFIX}${err?.message || labels.TRY_AGAIN}`,
+        });
+      }
+      return;
+    }
     dispatch({ type: CmsActionType.SAVE_START });
     try {
       await saveDataNow();
@@ -267,45 +321,60 @@ export default function CmsManagementPage({
     }
   };
 
-  const addItem = (key: string, template: any) => {
-    const nextArr = [...(data[key] || []), { id: Date.now(), ...template }];
-    dispatch({
-      type: CmsActionType.SET_DATA_FIELD,
-      payload: { key, val: nextArr },
-    });
-  };
-
-  const removeItem = (key: string, id: any) => {
-    const nextArr = (data[key] || []).filter((i: any) => i.id !== id);
-    dispatch({
-      type: CmsActionType.SET_DATA_FIELD,
-      payload: { key, val: nextArr },
-    });
-  };
-
-  const updateItem = (key: string, id: any, field: string, val: any) => {
-    const nextArr = (data[key] || []).map((i: any) =>
-      i.id === id ? { ...i, [field]: val } : i,
-    );
-    dispatch({
-      type: CmsActionType.SET_DATA_FIELD,
-      payload: { key, val: nextArr },
-    });
-  };
-
-  const moveItem = (index: number, direction: MoveDirection) => {
-    const layout = [...(data.homepage_layout || [])];
-    const targetIndex = direction === MoveDirection.UP ? index - 1 : index + 1;
-    if (targetIndex >= 0 && targetIndex < layout.length) {
-      const temp = layout[index];
-      layout[index] = layout[targetIndex];
-      layout[targetIndex] = temp;
+  const discardChanges = () => {
+    if (customHandlers.current[page]?.discard) {
+      customHandlers.current[page].discard!();
       dispatch({
-        type: CmsActionType.SET_DATA_FIELD,
-        payload: { key: "homepage_layout", val: layout },
+        type: CmsActionType.SET_DIRTY,
+        payload: { key: page, dirty: false },
       });
+      return;
     }
+    load(true);
   };
+
+  const addItem = (field: string, template: any) => {
+    const nextArr = [
+      ...(currentData[field] || []),
+      { id: Date.now(), ...template },
+    ];
+    set(field, nextArr);
+  };
+
+  const removeItem = (field: string, id: any) => {
+    const nextArr = (currentData[field] || []).filter((i: any) => i.id !== id);
+    set(field, nextArr);
+  };
+
+  const updateItem = (field: string, id: any, prop: string, val: any) => {
+    const nextArr = (currentData[field] || []).map((i: any) =>
+      i.id === id ? { ...i, [prop]: val } : i,
+    );
+    set(field, nextArr);
+  };
+
+  const registerSaveHandler = useCallback(
+    (p: PageType, handler: () => Promise<void>) => {
+      if (!customHandlers.current[p]) customHandlers.current[p] = {};
+      customHandlers.current[p].save = handler;
+    },
+    [],
+  );
+
+  const registerDiscardHandler = useCallback(
+    (p: PageType, handler: () => void) => {
+      if (!customHandlers.current[p]) customHandlers.current[p] = {};
+      customHandlers.current[p].discard = handler;
+    },
+    [],
+  );
+
+  const setCustomDirty = useCallback((p: PageType, isDirty: boolean) => {
+    dispatch({
+      type: CmsActionType.SET_DIRTY,
+      payload: { key: p, dirty: isDirty },
+    });
+  }, []);
 
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -315,7 +384,7 @@ export default function CmsManagementPage({
     const clampedY = Math.max(0, Math.min(100, y));
 
     if (selectedHotspotId !== null && selectedHotspotId !== undefined) {
-      const updated = (data?.[CmsDataKey.LOOKBOOK_HOTSPOTS] || []).map(
+      const updated = (currentData?.[CmsDataKey.LOOKBOOK_HOTSPOTS] || []).map(
         (h: any) =>
           h.id === selectedHotspotId ? { ...h, x: clampedX, y: clampedY } : h,
       );
@@ -330,7 +399,7 @@ export default function CmsManagementPage({
         product_id: "",
       };
       set(CmsDataKey.LOOKBOOK_HOTSPOTS, [
-        ...(data?.[CmsDataKey.LOOKBOOK_HOTSPOTS] || []),
+        ...(currentData?.[CmsDataKey.LOOKBOOK_HOTSPOTS] || []),
         newHotspot,
       ]);
       setSelectedHotspotId(newId);
@@ -341,7 +410,7 @@ export default function CmsManagementPage({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex-1 min-w-0 bg-gray-50/50 p-6 lg:p-10 min-h-screen max-h-screen overflow-y-scroll overflow-x-hidden"
+      className="flex-1 min-w-0 bg-gray-50/50 p-6 lg:p-10"
     >
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
@@ -352,19 +421,31 @@ export default function CmsManagementPage({
             {labels.SUBTITLE}
           </p>
         </div>
-        <button
-          type="submit"
-          onSubmit={save}
-          disabled={saving || loading}
-          className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-theme-body-sm px-6 py-2.5 rounded-xl shadow disabled:opacity-50"
-        >
-          {saving ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <Save size={16} />
+        <div className="flex items-center gap-3">
+          {isDirty && (
+            <button
+              type="button"
+              onClick={discardChanges}
+              disabled={saving || loading}
+              className="px-4 py-2.5 text-theme-caption font-bold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all shadow-sm disabled:opacity-50"
+            >
+              Discard Changes
+            </button>
           )}
-          {saving ? labels.SAVING : labels.SAVE_CHANGES}
-        </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={!isDirty || saving || loading}
+            className="flex items-center gap-2 bg-slate-900 hover:bg-black text-white font-bold text-theme-body-sm px-6 py-2.5 rounded-xl shadow disabled:opacity-50 transition-all"
+          >
+            {saving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
+            {saving ? labels.SAVING : labels.SAVE_CHANGES}
+          </button>
+        </div>
       </div>
       {/* Tab + Lang selectors */}
       <div className="bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl shadow-sm p-5 mb-8 flex flex-col lg:flex-row gap-6 sticky top-0 z-10">
@@ -379,41 +460,46 @@ export default function CmsManagementPage({
                 onClick={() =>
                   dispatch({ type: CmsActionType.SET_PAGE, payload: p })
                 }
-                className={`px-4 py-1.5 text-theme-caption font-bold rounded-lg border transition-all ${page === p ? "bg-purple-600 text-white border-purple-600" : "bg-gray-50 text-gray-600 border-gray-200 hover:border-purple-300"}`}
+                className={`px-4 py-1.5 text-theme-caption font-bold rounded-lg border transition-all ${page === p ? "bg-slate-900 text-white border-slate-900" : "bg-gray-50 text-gray-600 border-gray-200 hover:border-slate-400"}`}
               >
                 {PAGE_LABELS[p]}
+                {(dirty[p] || dirty[`${p}_${lang}`]) && (
+                  <span className="w-2 h-2 rounded-full bg-orange-400 inline-block ml-2 animate-pulse" />
+                )}
               </button>
             ))}
           </div>
         </div>
-        {page !== PageType.THEME && page !== PageType.NAVBAR && (
-          <div>
-            <p className="text-theme-caption font-bold text-gray-400 uppercase mb-2">
-              {labels.LANGUAGE}
-            </p>
-            <div className="flex gap-1.5">
-              {([LangType.EN, LangType.ES] as LangType[]).map((l) => (
-                <button
-                  key={l}
-                  onClick={() =>
-                    dispatch({ type: CmsActionType.SET_LANG, payload: l })
-                  }
-                  className={`flex items-center gap-1 px-4 py-1.5 text-theme-caption font-bold rounded-lg border transition-all ${lang === l ? "bg-purple-600 text-white border-purple-600" : "bg-gray-50 text-gray-600 border-gray-200"}`}
-                >
-                  {l === LangType.EN ? (
-                    <>
-                      <Globe size={12} /> {labels.ENGLISH}
-                    </>
-                  ) : (
-                    <>
-                      <Languages size={12} /> {labels.ESPANOL}
-                    </>
-                  )}
-                </button>
-              ))}
+        {page !== PageType.THEME &&
+          page !== PageType.NAVBAR &&
+          page !== PageType.FILTERS && (
+            <div>
+              <p className="text-theme-caption font-bold text-gray-400 uppercase mb-2">
+                {labels.LANGUAGE}
+              </p>
+              <div className="flex gap-1.5">
+                {([LangType.EN, LangType.ES] as LangType[]).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() =>
+                      dispatch({ type: CmsActionType.SET_LANG, payload: l })
+                    }
+                    className={`flex items-center gap-1 px-4 py-1.5 text-theme-caption font-bold rounded-lg border transition-all ${lang === l ? "bg-slate-900 text-white border-slate-900" : "bg-gray-50 text-gray-600 border-gray-200"}`}
+                  >
+                    {l === LangType.EN ? (
+                      <>
+                        <Globe size={12} /> {labels.ENGLISH}
+                      </>
+                    ) : (
+                      <>
+                        <Languages size={12} /> {labels.ESPANOL}
+                      </>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
 
       {msg && (
@@ -424,53 +510,75 @@ export default function CmsManagementPage({
         </div>
       )}
 
-      <AnimatePresence mode="wait">
-        {loading ? (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="bg-white rounded-2xl border p-20 flex items-center justify-center"
-          >
-            <Loader2 size={36} className="animate-spin text-purple-600" />
-          </motion.div>
-        ) : page === PageType.THEME ? (
-          <motion.div
-            key="theme"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-6 pb-20"
-          >
-            <BrandingTab />
-          </motion.div>
-        ) : page === PageType.NAVBAR ? (
-          /* Relational navbar tab — self-fetching, manages its own saves.
-             Rendered outside the legacy CMS form so the global Save button
-             doesn't attempt a JSON-blob write for the navbar page. */
-          <motion.div
-            key="navbar"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-6 pb-20"
-          >
-            <CmsNavbarTab />
-          </motion.div>
-        ) : (
-          <motion.form
-            key="form"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+      {!token || !companyId ? (
+        <div className="mt-8">
+          <SessionErrorCard />
+        </div>
+      ) : (
+        <div className="relative pb-20">
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 z-50 bg-gray-50/50 backdrop-blur-[2px] rounded-2xl p-20 flex items-center justify-center"
+            >
+              <Loader2 size={36} className="animate-spin text-slate-900" />
+            </motion.div>
+          )}
+
+          {mountedTabs.has(PageType.THEME) && (
+            <div
+              className={page === PageType.THEME ? "block space-y-6" : "hidden"}
+            >
+              <BrandingTab
+                registerSave={registerSaveHandler}
+                registerDiscard={registerDiscardHandler}
+                setDirty={setCustomDirty}
+              />
+            </div>
+          )}
+
+          {mountedTabs.has(PageType.NAVBAR) && (
+            <div
+              className={
+                page === PageType.NAVBAR ? "block space-y-6" : "hidden"
+              }
+            >
+              <CmsNavbarTab
+                registerSave={registerSaveHandler}
+                registerDiscard={registerDiscardHandler}
+                setDirty={setCustomDirty}
+              />
+            </div>
+          )}
+
+          {mountedTabs.has(PageType.FILTERS) && (
+            <div
+              className={
+                page === PageType.FILTERS ? "block space-y-6" : "hidden"
+              }
+            >
+              <CmsFiltersTab
+                registerSave={registerSaveHandler}
+                registerDiscard={registerDiscardHandler}
+                setDirty={setCustomDirty}
+              />
+            </div>
+          )}
+
+          <form
             onSubmit={save}
-            className="space-y-8 pb-20"
+            className={
+              page !== PageType.THEME &&
+              page !== PageType.NAVBAR &&
+              page !== PageType.FILTERS
+                ? "block space-y-8"
+                : "hidden"
+            }
           >
-            {/* HOME */}
             {page === PageType.HOME && (
               <CmsHomeTab
-                data={data}
+                data={currentData}
                 set={set}
                 removeItem={removeItem}
                 addItem={addItem}
@@ -482,17 +590,13 @@ export default function CmsManagementPage({
               />
             )}
 
-            {/* NAVBAR — handled by the branch above, never reaches here */}
-
-            {/* FOOTER */}
             {page === PageType.FOOTER && (
-              <CmsFooterTab data={data} addItem={addItem} set={set} />
+              <CmsFooterTab data={currentData} addItem={addItem} set={set} />
             )}
 
-            {/* ABOUT */}
             {page === PageType.ABOUT && (
               <CmsAboutTab
-                data={data}
+                data={currentData}
                 addItem={addItem}
                 set={set}
                 removeItem={removeItem}
@@ -501,10 +605,9 @@ export default function CmsManagementPage({
               />
             )}
 
-            {/* CONTACT */}
             {page === PageType.CONTACT && (
               <CmsContactTab
-                data={data}
+                data={currentData}
                 addItem={addItem}
                 set={set}
                 removeItem={removeItem}
@@ -513,36 +616,16 @@ export default function CmsManagementPage({
               />
             )}
 
-            {/* storefront */}
             {page === PageType.STORE && (
-              <CmsStoreTab set={set} data={data} makeAutoSave={makeAutoSave} />
+              <CmsStoreTab
+                set={set}
+                data={currentData}
+                makeAutoSave={makeAutoSave}
+              />
             )}
-
-            {/* Footer Actions */}
-            <div className="flex justify-end gap-4 bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
-              <button
-                type="button"
-                onClick={load}
-                className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-theme-caption font-bold uppercase rounded-xl transition-all"
-              >
-                {labels.RESET}
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-theme-caption font-bold uppercase rounded-xl shadow-md disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Save size={14} />
-                )}
-                {saving ? labels.SAVING : labels.SAVE_CONFIGURATION}
-              </button>
-            </div>
-          </motion.form>
-        )}
-      </AnimatePresence>
+          </form>
+        </div>
+      )}
     </motion.div>
   );
 }

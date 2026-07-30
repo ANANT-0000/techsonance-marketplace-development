@@ -84,7 +84,7 @@ export default function LandingNavbar({ content }: LandingNavbarProps) {
           ))}
         </ul>
 
-        <div className="hidden items-center gap-3 lg:flex">
+        <div className="hidden items-center gap-3 lg:flex mt-1">
           <Link
             href={VEDNOR_REGISTER_PATH}
             className="rounded-full bg-landing-primary px-5 py-2.5 text-sm font-semibold text-landing-on-primary shadow-lg shadow-landing-primary/20 transition-transform hover:bg-landing-primary-hover hover:scale-[1.02]"

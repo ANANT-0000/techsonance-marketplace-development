@@ -11,10 +11,11 @@ import { useRouter, notFound } from "next/navigation";
 import { useAppDispatch } from "@/hooks/reduxHooks";
 import { User, VendorUser, UserRole } from "@/utils/Types";
 import { isAdminDomainAllowed } from "@/lib/get-domain";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
 import { AUTH_TEXT, IS_AUTHENTICATED_KEY } from "@/constants";
-import { ADMIN_LOGIN_TEXT } from "@/constants/adminText";
+import { ADMIN_LOGIN_TEXT } from "@/constants";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 
 enum UiState {
   IDLE = "idle",
@@ -148,6 +149,7 @@ function adminLoginReducer(state: State, action: Action): State {
 export default function AdminLoginPage() {
   // TODO(security): Domain and auth gating currently run client-side in useEffect, after the full admin-login bundle is sent to the browser. Consider moving to Next.js middleware or a Server Component.
   const [domainAllowed, setDomainAllowed] = useState<boolean | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     let ignore = false;
@@ -169,6 +171,34 @@ export default function AdminLoginPage() {
   const [state, dispatchState] = useReducer(adminLoginReducer, initialState);
   const router = useRouter();
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Guards against setState calls landing after the component has unmounted
+  // (e.g. the user navigates away mid-login while the step-animation
+  // timeouts in submitHandler are still pending).
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Focus management: move focus to the heading whenever we land on the
+  // success or error screen, so screen-reader users get the outcome
+  // announced instead of having focus stranded on a now-hidden button.
+  const outcomeHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  useEffect(() => {
+    if (state.uiState === UiState.SUCCESS || state.uiState === UiState.ERROR) {
+      outcomeHeadingRef.current?.focus();
+    }
+  }, [state.uiState]);
+
+  const idInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (state.uiState === UiState.IDLE) {
+      idInputRef.current?.focus();
+    }
+  }, [state.uiState]);
 
   useEffect(() => {
     if (domainAllowed !== true) return;
@@ -214,14 +244,36 @@ export default function AdminLoginPage() {
   }
 
   if (domainAllowed === null) {
-    return null;
+    return (
+      <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: prefersReducedMotion ? 0 : 0.5 }}
+          className="flex flex-col items-center gap-4 text-center"
+        >
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
+            <Loader2 className="w-10 h-10 text-primary animate-spin relative z-10" />
+          </div>
+          <p className="text-sm font-medium text-muted-foreground tracking-wide mt-2">
+            Verifying secure connection...
+          </p>
+        </motion.div>
+      </main>
+    );
   }
 
   const updateStep = (index: number, status: Step["status"]) => {
     dispatchState({ type: ActionType.UPDATE_STEP, payload: { index, status } });
   };
 
-  const submitHandler = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  // Small helper so the artificial step-animation delays never resolve
+  // into a dispatch after unmount.
+  const delay = (ms: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  const submitHandler = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (state.uiState === UiState.LOADING) return;
     if (!state.adminLoginID || !state.adminLoginPass) {
@@ -248,15 +300,18 @@ export default function AdminLoginPage() {
         password: state.adminLoginPass!,
       });
     } catch (err) {
-      dispatch(loginFailure("Network error. Please try again."));
+      if (!isMountedRef.current) return;
+      dispatch(loginFailure(ADMIN_LOGIN_TEXT.NETWORK_ERROR_MSG));
       updateStep(0, StepStatus.FAILED);
       dispatchState({
         type: ActionType.SET_ERROR,
-        payload: "Network error. Please try again.",
+        payload: ADMIN_LOGIN_TEXT.NETWORK_ERROR_MSG,
       });
       dispatchState({ type: ActionType.SET_UI_STATE, payload: UiState.ERROR });
       return;
     }
+
+    if (!isMountedRef.current) return;
 
     dispatch(
       result.status === 200
@@ -277,18 +332,25 @@ export default function AdminLoginPage() {
     );
 
     // NOTE: intentional UX delay for step animation — confirm with product
-    // before removing/shortening this.
-    // Step 1 done, step 2 active
+    // before removing/shortening this. Skipped entirely when the user has
+    // requested reduced motion, so the login doesn't feel artificially slow
+    // for people who've opted out of animation.
+    const stepDelay = prefersReducedMotion ? 0 : 600;
+    const finalDelay = prefersReducedMotion ? 0 : 400;
+
     updateStep(0, StepStatus.DONE);
     updateStep(1, StepStatus.ACTIVE);
-    await new Promise((r) => setTimeout(r, 600));
+    await delay(stepDelay);
+    if (!isMountedRef.current) return;
 
     updateStep(1, StepStatus.DONE);
     updateStep(2, StepStatus.ACTIVE);
-    await new Promise((r) => setTimeout(r, 600));
+    await delay(stepDelay);
+    if (!isMountedRef.current) return;
 
     updateStep(2, StepStatus.DONE);
-    await new Promise((r) => setTimeout(r, 400));
+    await delay(finalDelay);
+    if (!isMountedRef.current) return;
 
     dispatchState({ type: ActionType.SET_UI_STATE, payload: UiState.SUCCESS });
     startRedirect();
@@ -309,46 +371,71 @@ export default function AdminLoginPage() {
         payload: Math.ceil((total - Math.min(elapsed, total)) / 1000),
       });
       if (elapsed >= total) {
-        clearInterval(countdownRef.current!);
-
+        if (countdownRef.current) clearInterval(countdownRef.current);
         router.replace("/admin");
       }
     }, interval);
   };
 
+  const goToAdminNow = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    router.replace("/admin");
+  };
+
   const StepIcon = ({ status }: { status: Step["status"] }) => {
     if (status === "active")
       return (
-        <span className="block w-3.5 h-3.5 rounded-full border-2 border-sky-200 border-t-sky-500 animate-spin" />
+        <span className="block w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
       );
     if (status === "done")
-      return <span className="text-green-600 text-theme-body-sm">✓</span>;
+      return (
+        <span className="text-green-600 dark:text-green-400 font-bold text-sm">
+          ✓
+        </span>
+      );
     if (status === "failed")
-      return <span className="text-red-500 text-theme-body-sm">✕</span>;
-    return <span className="text-gray-300 text-theme-body-sm">○</span>;
+      return <span className="text-destructive font-bold text-sm">✕</span>;
+    return (
+      <span className="text-muted-foreground/40 font-bold text-sm">○</span>
+    );
   };
 
   const stepStyles: Record<Step["status"], string> = {
-    pending: "bg-gray-50 border-gray-100",
-    active: "bg-sky-50 border-sky-100",
-    done: "bg-green-50 border-green-100",
-    failed: "bg-red-50 border-red-100",
+    pending: "bg-muted/30 border-border",
+    active: "bg-primary/5 border-primary/20 shadow-sm",
+    done: "bg-green-500/10 border-green-500/20",
+    failed: "bg-destructive/10 border-destructive/20",
   };
   const stepTextStyles: Record<Step["status"], string> = {
-    pending: "text-gray-400",
-    active: "text-sky-700",
-    done: "text-green-700",
-    failed: "text-red-600",
+    pending: "text-muted-foreground",
+    active: "text-primary",
+    done: "text-green-600 dark:text-green-400",
+    failed: "text-destructive",
   };
 
+  const xOffset = prefersReducedMotion ? 0 : 20;
+  const yOffset = prefersReducedMotion ? 0 : 20;
+
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 font-sans">
-      <div className="w-full bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+    <main className="min-h-screen bg-background flex flex-col items-center justify-center p-6 selection:bg-primary/20 selection:text-primary">
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: yOffset }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: prefersReducedMotion ? 0 : 0.6,
+          ease: [0.16, 1, 0.3, 1],
+        }}
+        className="w-full max-w-lg bg-card rounded-3xl border border-border shadow-xl overflow-hidden"
+      >
         {/* Header — always visible */}
-        <div className="px-8 pt-8 pb-6 border-b border-gray-100">
-          <div className="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center mb-4">
+        <div className="px-8 pt-10 pb-6 border-b border-border/50 relative overflow-hidden">
+          {/* Decorative background element */}
+          <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-primary/5 rounded-full blur-2xl pointer-events-none" />
+
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5 relative z-10 shadow-sm">
             <svg
-              className="w-5 h-5 text-sky-500"
+              className="w-6 h-6 text-primary"
               fill="none"
               stroke="currentColor"
               strokeWidth={2}
@@ -361,196 +448,303 @@ export default function AdminLoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-theme-h6 font-semibold text-gray-900 mb-0.5">
+          <h1 className="text-2xl md:text-3xl font-semibold text-foreground mb-1.5 tracking-tight relative z-10">
             {ADMIN_LOGIN_TEXT.TITLE}
           </h1>
-          <p className="text-theme-body-sm text-gray-500">
+          <p className="text-sm text-muted-foreground relative z-10">
             {ADMIN_LOGIN_TEXT.SUBTITLE}
           </p>
         </div>
 
-        {/* IDLE — login form */}
-        {state.uiState === UiState.IDLE && (
-          <form
-            onSubmit={submitHandler}
-            className="w-full px-8 py-6 flex flex-col gap-4"
-          >
-            <CookieConsentBanner />
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="adminLoginID"
-                className="text-md font-medium text-gray-600 tracking-wide"
+        {/*
+          Content area: previously this used a fixed `min-h-[360px]` wrapper
+          with each state absolutely positioned (`inset-0`) inside it. That
+          meant the card's real height never reflected the content that was
+          actually showing — e.g. the idle form grows taller than 360px as
+          soon as both the "fill in all fields" error AND the "enable local
+          storage" warning are visible, and with the parent's
+          `overflow-hidden` that overflow was silently clipped, cutting off
+          the submit button and disclaimer text. Motion's `layout` prop on
+          the parent card now animates height changes smoothly as each
+          state's real content height changes, so nothing is ever clipped
+          or overlapping.
+        */}
+        <div className="relative">
+          <AnimatePresence mode="wait" initial={false}>
+            {/* IDLE — login form */}
+            {state.uiState === UiState.IDLE && (
+              <motion.form
+                key="idle"
+                initial={{ opacity: 0, x: -xOffset }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: xOffset }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
+                onSubmit={submitHandler}
+                noValidate
+                className="w-full px-8 py-8 flex flex-col gap-5"
               >
-                {ADMIN_LOGIN_TEXT.ID_LABEL}
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-theme-body-sm">
-                  @
-                </span>
-                <input
-                  id="adminLoginID"
-                  name="adminLoginID"
-                  autoComplete="username"
-                  type="text"
-                  required
-                  maxLength={50}
-                  value={state.adminLoginID ?? ""}
-                  className="w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-theme-body-sm text-gray-900 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition"
-                  placeholder={ADMIN_LOGIN_TEXT.ID_PLACEHOLDER}
-                  onChange={(e) =>
-                    dispatchState({
-                      type: ActionType.SET_LOGIN_ID,
-                      payload: e.target.value,
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label
-                htmlFor="adminLoginPass"
-                className="text-md font-medium text-gray-600 tracking-wide"
-              >
-                {ADMIN_LOGIN_TEXT.PASS_LABEL}
-              </label>
-              <div className="relative">
-                <input
-                  id="adminLoginPass"
-                  name="adminLoginPass"
-                  autoComplete="current-password"
-                  type={state.showPass ? "text" : "password"}
-                  required
-                  value={state.adminLoginPass ?? ""}
-                  className="w-full pl-8 pr-10 py-2.5 border border-gray-200 rounded-lg text-md"
-                  onChange={(e) =>
-                    dispatchState({
-                      type: ActionType.SET_LOGIN_PASS,
-                      payload: e.target.value,
-                    })
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    dispatchState({ type: ActionType.TOGGLE_SHOW_PASS })
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
-                  aria-label={
-                    state.showPass
-                      ? ADMIN_LOGIN_TEXT.HIDE_PASS
-                      : ADMIN_LOGIN_TEXT.SHOW_PASS
-                  }
-                >
-                  {state.showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-            {state.error && (
-              <div
-                role="alert"
-                aria-live="polite"
-                className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2.5 text-theme-body-sm text-red-600"
-              >
-                <span>⚠</span> {state.error}
-              </div>
-            )}
-            {state.storageBlocked && (
-              <div
-                role="alert"
-                aria-live="polite"
-                className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2.5 text-theme-body-sm text-amber-700"
-              >
-                <span>⚠</span> Please enable local storage to sign in.
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={state.storageBlocked}
-              className="w-full bg-sky-500 hover:bg-sky-600 active:scale-[.98] disabled:opacity-60 text-white font-semibold text-theme-body-sm rounded-lg py-2.5 transition flex items-center justify-center gap-2"
-            >
-              {ADMIN_LOGIN_TEXT.BTN_AUTH}
-            </button>
-            <p className="text-center text-theme-caption text-gray-400 flex items-center justify-center gap-1 mt-1">
-              {ADMIN_LOGIN_TEXT.MONITOR_MSG}
-            </p>
-            <p className="text-center text-[10px] text-gray-400 mt-2 px-2 leading-relaxed">
-              {AUTH_TEXT.CONSENT.DISCLAIMER}
-            </p>
-          </form>
-        )}
-
-        {/* LOADING — step progress */}
-        {state.uiState === UiState.LOADING && (
-          <div className="px-8 py-8 flex flex-col items-center">
-            <p className="text-theme-caption font-medium text-gray-400 uppercase tracking-widest mb-1">
-              {ADMIN_LOGIN_TEXT.LOADING_TITLE}
-            </p>
-            <p className="text-theme-caption text-gray-400 mb-5">
-              {ADMIN_LOGIN_TEXT.LOADING_SUBTITLE}
-            </p>
-            <div className="w-full flex flex-col gap-2" aria-live="polite">
-              {state.steps.map((step, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border text-theme-body-sm font-medium transition-all ${stepStyles[step.status]} ${stepTextStyles[step.status]}`}
-                >
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center bg-white border border-gray-100 flex-shrink-0">
-                    <StepIcon status={step.status} />
+                <CookieConsentBanner />
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="adminLoginID"
+                    className="text-sm font-medium text-foreground tracking-wide"
+                  >
+                    {ADMIN_LOGIN_TEXT.ID_LABEL}
+                  </label>
+                  <div className="relative group">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm z-10">
+                      @
+                    </span>
+                    <input
+                      ref={idInputRef}
+                      id="adminLoginID"
+                      name="adminLoginID"
+                      autoComplete="username"
+                      type="text"
+                      required
+                      maxLength={50}
+                      value={state.adminLoginID ?? ""}
+                      aria-invalid={!!state.error}
+                      aria-describedby={
+                        state.error ? "admin-login-error" : undefined
+                      }
+                      className="w-full pl-9 pr-4 py-3 border border-border rounded-xl text-sm text-foreground bg-background outline-none transition-all duration-300 focus:border-primary focus:ring-[3px] focus:ring-primary/20 hover:border-border/80 shadow-sm"
+                      placeholder={ADMIN_LOGIN_TEXT.ID_PLACEHOLDER}
+                      onChange={(e) =>
+                        dispatchState({
+                          type: ActionType.SET_LOGIN_ID,
+                          payload: e.target.value,
+                        })
+                      }
+                    />
                   </div>
-                  {step.label}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="adminLoginPass"
+                    className="text-sm font-medium text-foreground tracking-wide"
+                  >
+                    {ADMIN_LOGIN_TEXT.PASS_LABEL}
+                  </label>
+                  <div className="relative group">
+                    <input
+                      id="adminLoginPass"
+                      name="adminLoginPass"
+                      autoComplete="current-password"
+                      type={state.showPass ? "text" : "password"}
+                      required
+                      value={state.adminLoginPass ?? ""}
+                      aria-invalid={!!state.error}
+                      aria-describedby={
+                        state.error ? "admin-login-error" : undefined
+                      }
+                      className="w-full pl-4 pr-11 py-3 border border-border rounded-xl text-sm text-foreground bg-background outline-none transition-all duration-300 focus:border-primary focus:ring-[3px] focus:ring-primary/20 hover:border-border/80 shadow-sm"
+                      onChange={(e) =>
+                        dispatchState({
+                          type: ActionType.SET_LOGIN_PASS,
+                          payload: e.target.value,
+                        })
+                      }
+                      onPaste={(e) => {
+                        if (process.env.NODE_ENV !== "development") {
+                          e.preventDefault();
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        dispatchState({ type: ActionType.TOGGLE_SHOW_PASS })
+                      }
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md"
+                      aria-label={
+                        state.showPass
+                          ? ADMIN_LOGIN_TEXT.HIDE_PASS
+                          : ADMIN_LOGIN_TEXT.SHOW_PASS
+                      }
+                    >
+                      {state.showPass ? (
+                        <EyeOff size={18} />
+                      ) : (
+                        <Eye size={18} />
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-        {/* SUCCESS — redirect countdown */}
-        {state.uiState === UiState.SUCCESS && (
-          <div className="px-8 py-8 flex flex-col items-center text-center">
-            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-4 text-theme-h4">
-              ✓
-            </div>
-            <h2 className="text-theme-body font-semibold text-gray-900 mb-1">
-              {ADMIN_LOGIN_TEXT.SUCCESS_TITLE}
-            </h2>
-            <p className="text-theme-body-sm text-gray-500 mb-5">
-              {ADMIN_LOGIN_TEXT.SUCCESS_SUBTITLE}
-            </p>
-            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-2">
-              <div
-                className="h-1.5 bg-sky-500 rounded-full transition-all"
-                style={{ width: `${state.redirectProgress}%` }}
-              />
-            </div>
-            <p className="text-theme-caption text-gray-400">
-              {ADMIN_LOGIN_TEXT.REDIRECT_PREFIX}
-              {state.countdown}
-              {ADMIN_LOGIN_TEXT.REDIRECT_SUFFIX}
-            </p>
-          </div>
-        )}
+                {state.error && (
+                  <motion.div
+                    id="admin-login-error"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+                    role="alert"
+                    aria-live="polite"
+                    className="flex items-center gap-2.5 bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-3 text-sm font-medium text-destructive mt-1"
+                  >
+                    <span aria-hidden="true">⚠</span> {state.error}
+                  </motion.div>
+                )}
 
-        {/* ERROR — access denied */}
-        {state.uiState === UiState.ERROR && (
-          <div className="px-8 py-8 flex flex-col items-center text-center">
-            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-4 text-theme-h4">
-              ✕
-            </div>
-            <h2 className="text-theme-body font-semibold text-gray-900 mb-1">
-              {ADMIN_LOGIN_TEXT.ERROR_TITLE}
-            </h2>
-            <p className="text-theme-body-sm text-gray-500 mb-5">
-              {state.error || ADMIN_LOGIN_TEXT.ERROR_DEFAULT_MSG}
-            </p>
-            <button
-              onClick={() => dispatchState({ type: ActionType.RESET_ON_RETRY })}
-              className="bg-sky-500 hover:bg-sky-600 text-white font-semibold text-theme-body-sm rounded-lg px-6 py-2.5 transition"
-            >
-              {ADMIN_LOGIN_TEXT.BTN_TRY_AGAIN}
-            </button>
-          </div>
-        )}
-      </div>
+                {state.storageBlocked && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+                    role="alert"
+                    aria-live="polite"
+                    className="flex items-center gap-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-sm font-medium text-amber-600 dark:text-amber-500 mt-1"
+                  >
+                    <span aria-hidden="true">⚠</span> {ADMIN_LOGIN_TEXT.STORAGE_ERROR_MSG}
+                  </motion.div>
+                )}
+
+                <div className="mt-2">
+                  <button
+                    type="submit"
+                    disabled={state.storageBlocked}
+                    className="w-full bg-primary hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed text-primary-foreground font-semibold text-sm rounded-xl py-3.5 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                  >
+                    {ADMIN_LOGIN_TEXT.BTN_AUTH}
+                  </button>
+                  <p className="text-center text-xs text-muted-foreground mt-4">
+                    {ADMIN_LOGIN_TEXT.MONITOR_MSG}
+                  </p>
+                  <p className="text-center text-[10px] text-muted-foreground/60 mt-2 px-2 leading-relaxed">
+                    {AUTH_TEXT.CONSENT.DISCLAIMER}
+                  </p>
+                </div>
+              </motion.form>
+            )}
+
+            {/* LOADING — step progress */}
+            {state.uiState === UiState.LOADING && (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0, y: yOffset }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -yOffset }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+                className="w-full px-8 py-10 flex flex-col"
+              >
+                <div className="mb-8">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-1.5">
+                    {ADMIN_LOGIN_TEXT.LOADING_TITLE}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {ADMIN_LOGIN_TEXT.LOADING_SUBTITLE}
+                  </p>
+                </div>
+                <div className="w-full flex flex-col gap-3">
+                  {state.steps.map((step, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: prefersReducedMotion ? 0 : i * 0.1 }}
+                      className={`flex items-center gap-4 px-5 py-3.5 rounded-xl border text-sm font-medium transition-colors duration-300 ${stepStyles[step.status]} ${stepTextStyles[step.status]}`}
+                    >
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center bg-background border border-border/50 flex-shrink-0 shadow-sm">
+                        <StepIcon status={step.status} />
+                      </div>
+                      {step.label}
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {/* SUCCESS — redirect countdown */}
+            {state.uiState === UiState.SUCCESS && (
+              <motion.div
+                key="success"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.1 }}
+                transition={{
+                  duration: prefersReducedMotion ? 0 : 0.5,
+                  type: prefersReducedMotion ? "tween" : "spring",
+                  bounce: 0.4,
+                }}
+                className="w-full px-8 py-12 flex flex-col items-center text-center"
+              >
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-green-500/20 rounded-full blur-xl animate-pulse" />
+                  <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center text-2xl relative z-10 text-green-600 dark:text-green-400">
+                    ✓
+                  </div>
+                </div>
+                <h2
+                  ref={outcomeHeadingRef}
+                  tabIndex={-1}
+                  className="text-xl font-semibold text-foreground mb-2 tracking-tight outline-none"
+                >
+                  {ADMIN_LOGIN_TEXT.SUCCESS_TITLE}
+                </h2>
+                <p className="text-sm text-muted-foreground mb-8 max-w-[250px]">
+                  {ADMIN_LOGIN_TEXT.SUCCESS_SUBTITLE}
+                </p>
+                <div className="w-full max-w-[200px] bg-muted rounded-full h-1.5 overflow-hidden mb-4 relative">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${state.redirectProgress}%` }}
+                    transition={{ ease: "linear", duration: 0.05 }}
+                    className="absolute left-0 top-0 bottom-0 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground tracking-wide font-medium uppercase mb-6">
+                  {ADMIN_LOGIN_TEXT.REDIRECT_PREFIX}
+                  {state.countdown}
+                  {ADMIN_LOGIN_TEXT.REDIRECT_SUFFIX}
+                </p>
+                <button
+                  onClick={goToAdminNow}
+                  className="text-sm font-semibold text-primary hover:text-primary/80 underline underline-offset-4 transition-colors"
+                >
+                  {ADMIN_LOGIN_TEXT.BTN_GO_NOW}
+                </button>
+              </motion.div>
+            )}
+
+            {/* ERROR — access denied */}
+            {state.uiState === UiState.ERROR && (
+              <motion.div
+                key="error"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 1.05 }}
+                transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
+                className="w-full px-8 py-12 flex flex-col items-center text-center"
+              >
+                <div className="w-16 h-16 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mb-6 text-2xl text-destructive shadow-sm">
+                  ✕
+                </div>
+                <h2
+                  ref={outcomeHeadingRef}
+                  tabIndex={-1}
+                  className="text-xl font-semibold text-foreground mb-2 tracking-tight outline-none"
+                >
+                  {ADMIN_LOGIN_TEXT.ERROR_TITLE}
+                </h2>
+                <p className="text-sm text-muted-foreground mb-8 max-w-[250px]">
+                  {state.error || ADMIN_LOGIN_TEXT.ERROR_DEFAULT_MSG}
+                </p>
+                <button
+                  onClick={() =>
+                    dispatchState({ type: ActionType.RESET_ON_RETRY })
+                  }
+                  className="bg-foreground hover:bg-foreground/90 text-background active:scale-[0.98] font-semibold text-sm rounded-xl px-8 py-3 transition-all shadow-md"
+                >
+                  {ADMIN_LOGIN_TEXT.BTN_TRY_AGAIN}
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
     </main>
   );
 }

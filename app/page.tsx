@@ -18,7 +18,10 @@ import type { Metadata } from "next";
 import LandingPage from "@/components/landing/LandingPage";
 import LandingPageSkeleton from "@/components/common/LandingPageSkeleton";
 import StoreNotAvailable from "@/components/common/StoreNotAvailable";
-import { getLandingPageData, fetchCompanyProfile } from "@/utils/commonAPiClient";
+import {
+  getLandingPageData,
+  fetchCompanyProfile,
+} from "@/utils/commonAPiClient";
 import { LANDING_METADATA } from "@/constants/landingText";
 import {
   OG_TYPE,
@@ -212,15 +215,15 @@ export default async function RootPage() {
     );
   }
 
-  // ── Vendor Storefront / MainSite (e.g. acme.techsonance.co.in) ────────────
+  // // ── Vendor Storefront / MainSite (e.g. acme.techsonance.co.in) ────────────
   const profile = await fetchCompanyProfile();
 
-  if (!profile || profile.siteStatus === 'not_started') {
-    return <StoreNotAvailable />;
-  }
+  // if (!profile || profile.siteStatus === 'not_started') {
+  //   return <StoreNotAvailable />;
+  // }
 
   // If the vendor has published a landing page, show it.
-  if (profile.siteData?.isPublished) {
+  if (profile && "siteData" in profile && profile.siteData?.isPublished) {
     return (
       <Suspense fallback={<LandingPageSkeleton />}>
         <LandingPageContainer />

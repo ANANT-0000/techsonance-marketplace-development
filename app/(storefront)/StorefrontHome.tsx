@@ -11,12 +11,11 @@ import { TestimonialSlider } from "@/components/customer/homepage/TestimonialSli
 import { CuratedDiscovery } from "@/components/customer/homepage/CuratedDiscovery";
 import AxiosAPI from "@/lib/axios";
 
-import { CmsDataKey, LayoutSection } from "@/constants/cms";
+import { LayoutSection, CmsDataKey } from "@/constants/cms";
+import { STOREFRONT_HOME_TEXT } from "@/constants/customerText";
 
 import {
   InteractiveHero,
-  HeroLayout,
-  HeroBgStyle,
   SectionHeader,
   NewArrivalsDesktop,
   MobileNewArrivalCard,
@@ -30,8 +29,9 @@ import {
   BrandHighlight,
   TestimonialsMobile,
 } from "@/components/customer/homepage";
-import { PageLoader } from "@/components/customer/PageLoader";
 import StoreNotAvailable from "@/components/common/StoreNotAvailable";
+
+import { Skeleton } from "@/components/ui/skeleton";
 
 function Sk({
   w = "w-full",
@@ -45,9 +45,7 @@ function Sk({
   className?: string;
 }) {
   return (
-    <div
-      className={`${w} ${h} ${rounded} bg-gray-100 animate-pulse ${className}`}
-    />
+    <Skeleton className={`${w} ${h} ${rounded} bg-gray-100 ${className}`} />
   );
 }
 
@@ -101,24 +99,34 @@ function DraggableScrollContainer({
 }
 
 export default function Home() {
-  const { getField, banners, categories, heroSlides, isLoading, cmsContent, hasError } =
-    useHomepageData();
+  const {
+    getField,
+    banners,
+    categories,
+    heroSlides,
+    isLoading,
+    cmsContent,
+    hasError,
+  } = useHomepageData();
   const { themeData } = useThemeData();
 
   const layout: string[] = themeData?.homepage_layout || [
     LayoutSection.HERO,
     LayoutSection.CATEGORIES,
-    LayoutSection.PRODUCTS,
-    LayoutSection.PROMO,
     LayoutSection.NEW_ARRIVALS,
+    LayoutSection.PROMO,
     LayoutSection.NEWSLETTER,
+    LayoutSection.CURATED,
+    LayoutSection.SOCIAL_PROOF,
   ];
 
   const [products, setProducts] = useState<any[]>([]);
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   useEffect(() => {
-    AxiosAPI.get("/v1/products/homepage?limit=8", { headers: { "x-suppress-toast": true } })
+    AxiosAPI.get("/v1/products/homepage?limit=8", {
+      headers: { "x-suppress-toast": true },
+    })
       .then((res) => {
         setProducts(res.data.data.slice(0, 4));
         setNewArrivals(res.data.data.slice(4, 7));
@@ -138,12 +146,6 @@ export default function Home() {
   const renderDesktop = (key: string) => {
     switch (key) {
       case LayoutSection.HERO:
-        if (
-          !isLoading &&
-          heroSlides.length === 0 &&
-          !getField(CmsDataKey.HERO_VIDEO_URL)
-        )
-          return null;
         return (
           <div key={LayoutSection.HERO}>
             {isLoading ? (
@@ -159,20 +161,7 @@ export default function Home() {
                 video_desc={getField(CmsDataKey.HERO_VIDEO_DESC)}
                 video_btn_text={getField(CmsDataKey.HERO_VIDEO_BTN_TEXT)}
                 video_btn_link={getField(CmsDataKey.HERO_VIDEO_BTN_LINK)}
-                slides={heroSlides.map((slide: any) => ({
-                  image_url: slide.image_url,
-                  title: slide.title,
-                  subtitle: slide.subtitle,
-                  btn_text: slide.btn_text,
-                  btn_link:
-                    slide.btn_link ||
-                    (slide.search_query
-                      ? `/store?search=${encodeURIComponent(slide.search_query)}`
-                      : "/store"),
-                  layout: slide.layout || HeroLayout.CENTER_OVERLAY,
-                  bg_style: slide.bg_style || HeroBgStyle.GRADIENT,
-                  bg_color: slide.bg_color || "",
-                }))}
+                slides={heroSlides}
               />
             )}
           </div>
@@ -181,22 +170,19 @@ export default function Home() {
       case LayoutSection.TRUST_BADGES:
         if (isLoading) {
           return (
-            <div key={LayoutSection.TRUST_BADGES} className="w-full h-24 bg-gray-100 animate-pulse border-y border-gray-100" />
+            <div
+              key={LayoutSection.TRUST_BADGES}
+              className="w-full h-24 bg-gray-100 animate-pulse border-y border-gray-100"
+            />
           );
         }
-        
-        const badges = getField(CmsDataKey.SOCIAL_PROOF_BADGES);
-        const hasValidCmsBadges =
-          Array.isArray(badges) &&
-          badges.length > 0 &&
-          badges.some((badge: any) => (badge.title || badge.label || "").trim() !== "");
-          
-        if (!hasValidCmsBadges) return null;
-
-        return <TrustStrip key={LayoutSection.TRUST_BADGES} getField={getField} />;
+        // TrustStrip handles its own CMS→fallback logic internally
+        return (
+          <TrustStrip key={LayoutSection.TRUST_BADGES} getField={getField} />
+        );
 
       case LayoutSection.LOOKBOOK:
-        if (!isLoading && !getField(CmsDataKey.LOOKBOOK_IMAGE_URL)) return null;
+        // ShoppableLookbook renders IMAGE_PLACEHOLDER when no image is configured
         return (
           <ShoppableLookbook
             key={LayoutSection.LOOKBOOK}
@@ -208,13 +194,40 @@ export default function Home() {
           />
         );
 
-      case LayoutSection.SCARCITY:
-        if (
+      case LayoutSection.SCARCITY: {
+        const hasScarcity = !(
           !isLoading &&
           !getField(CmsDataKey.SCARCITY_TIMER_TITLE) &&
           !getField(CmsDataKey.SCARCITY_EXPIRES_AT)
-        )
-          return null;
+        );
+
+        if (!hasScarcity) {
+          return (
+            <section
+              key={LayoutSection.SCARCITY}
+              className="py-8 md:py-12 px-4 sm:px-6 lg:px-16 xl:px-24 bg-[#faf9f6]"
+            >
+              <div className="max-w-screen-xl mx-auto flex flex-col gap-6">
+                <div className="bg-white border border-stone-200 border-dashed rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-6 shadow-sm opacity-60 pointer-events-none text-center md:text-left">
+                  <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                    <div className="w-14 h-14 rounded-full bg-stone-50 text-stone-400 flex items-center justify-center shrink-0">
+                      <span className="text-2xl">✦</span>
+                    </div>
+                    <div className="max-w-xs md:max-w-sm">
+                      <h3 className="text-theme-tiny sm:text-theme-caption font-black text-stone-400 tracking-[0.25em] uppercase mb-1 sm:mb-2">
+                        {STOREFRONT_HOME_TEXT.SPECIAL_OFFERS}
+                      </h3>
+                      <p className="text-theme-body-sm sm:text-theme-body text-stone-500 leading-relaxed">
+                        {STOREFRONT_HOME_TEXT.PROMO_COMING_SOON}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          );
+        }
+
         return (
           <ScarcityBlock
             key={LayoutSection.SCARCITY}
@@ -227,12 +240,10 @@ export default function Home() {
             btn_link={getField(CmsDataKey.SCARCITY_BTN_LINK)}
           />
         );
+      }
 
       case LayoutSection.SOCIAL_PROOF:
-        if (!isLoading) {
-          const testimonials = getField(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS);
-          if (!testimonials || testimonials.length === 0) return null;
-        }
+        // TestimonialSlider falls back to TESTIMONIALS_SLIDER_DEFAULT when no CMS testimonials
         return (
           <TestimonialSlider
             key={LayoutSection.SOCIAL_PROOF}
@@ -256,7 +267,6 @@ export default function Home() {
         );
 
       case LayoutSection.CATEGORIES:
-        if (!isLoading && categories.length === 0) return null;
         return (
           <section
             key={LayoutSection.CATEGORIES}
@@ -279,21 +289,73 @@ export default function Home() {
                         <Sk w="w-2/3" h="h-3 pointer-events-none" />
                       </div>
                     ))
-                  : categories.slice(0, 8).map((cat, idx) => (
+                  : categories.length === 0
+                    ? Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="flex-shrink-0 w-[240px] sm:w-[280px] snap-start flex flex-col gap-3 pointer-events-none"
+                        >
+                          <div
+                            className="aspect-[3/4] w-full rounded-2xl bg-gradient-to-br from-stone-50 to-stone-100 border border-stone-100 flex items-center justify-center"
+                            style={{ height: "20vh" }}
+                          >
+                            <span className="text-stone-300 text-4xl select-none">
+                              ✦
+                            </span>
+                          </div>
+                          <div className="w-2/3 h-3 bg-stone-100 rounded" />
+                        </div>
+                      ))
+                    : categories.slice(0, 8).map((cat, idx) => (
+                        <div
+                          key={idx}
+                          className="flex-shrink-0 w-[240px] sm:w-[280px] snap-start pointer-events-none *:pointer-events-auto"
+                        >
+                          <CategoryCard
+                            cat={cat}
+                            idx={idx}
+                            aspectRatio={
+                              getField(
+                                CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP,
+                              ) || "aspect-[3/4]"
+                            }
+                            borderRadius={
+                              getField(
+                                CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP,
+                              ) || "rounded-2xl"
+                            }
+                          />
+                        </div>
+                      ))}
+
+                {/* Sparse Inventory Fallback for Categories */}
+                {!isLoading &&
+                  categories.length > 0 &&
+                  categories.length < 4 &&
+                  Array.from({ length: 4 - categories.length }).map((_, i) => (
+                    <div
+                      key={`fallback-${i}`}
+                      className="flex-shrink-0 w-[240px] sm:w-[280px] snap-start flex flex-col gap-3 pointer-events-none opacity-60"
+                    >
                       <div
-                        key={idx}
-                        className="flex-shrink-0 w-[240px] sm:w-[280px] snap-start pointer-events-none *:pointer-events-auto"
+                        className="aspect-[3/4] w-full rounded-2xl bg-gradient-to-br from-stone-50 to-stone-100 border border-stone-100 border-dashed flex items-center justify-center flex-col gap-2"
+                        style={{ height: "20vh" }}
                       >
-                        <CategoryCard cat={cat} idx={idx} />
+                        <span className="text-stone-300 text-3xl select-none">
+                          ✦
+                        </span>
+                        <span className="text-stone-400 text-xs font-semibold uppercase tracking-widest">
+                          {STOREFRONT_HOME_TEXT.COMING_SOON}
+                        </span>
                       </div>
-                    ))}
+                    </div>
+                  ))}
               </DraggableScrollContainer>
             </div>
           </section>
         );
 
       case LayoutSection.PRODUCTS:
-        if (!productsLoading && products.length === 0) return null;
         return (
           <section
             key={LayoutSection.PRODUCTS}
@@ -318,11 +380,49 @@ export default function Home() {
                         <Sk w="w-1/4" h="h-5" />
                       </div>
                     ))
-                  : products.map((p, idx) => (
-                      <ul key={p.id} className="list-none p-0 m-0 h-full">
-                        <ProductCard product={p} idx={idx} />
-                      </ul>
-                    ))}
+                  : products.length === 0
+                    ? Array.from({ length: 4 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className="flex flex-col bg-white rounded-2xl p-4 gap-3 border border-stone-100"
+                        >
+                          <div className="aspect-square bg-gradient-to-br from-stone-50 to-stone-100 rounded-xl flex items-center justify-center">
+                            <span className="text-stone-300 text-5xl select-none">
+                              ✦
+                            </span>
+                          </div>
+                          <div className="w-1/3 h-2.5 bg-stone-100 rounded" />
+                          <div className="w-3/4 h-4 bg-stone-100 rounded" />
+                          <div className="w-1/4 h-5 bg-stone-100 rounded" />
+                        </div>
+                      ))
+                    : products.map((p, idx) => (
+                        <ul key={p.id} className="list-none p-0 m-0 h-full">
+                          <ProductCard product={p} idx={idx} />
+                        </ul>
+                      ))}
+
+                {/* Sparse Inventory Fallback for Products */}
+                {!productsLoading &&
+                  products.length > 0 &&
+                  products.length < 4 &&
+                  Array.from({ length: 4 - products.length }).map((_, i) => (
+                    <div
+                      key={`fallback-${i}`}
+                      className="flex flex-col bg-white rounded-2xl p-4 gap-3 border border-stone-100 border-dashed opacity-60 pointer-events-none h-full"
+                    >
+                      <div className="aspect-square bg-gradient-to-br from-stone-50 to-stone-100 rounded-xl flex flex-col items-center justify-center gap-2">
+                        <span className="text-stone-300 text-4xl select-none">
+                          ✦
+                        </span>
+                        <span className="text-stone-400 text-xs font-semibold uppercase tracking-widest">
+                          {STOREFRONT_HOME_TEXT.MORE_SOON}
+                        </span>
+                      </div>
+                      <div className="w-1/3 h-2.5 bg-stone-100 rounded mt-2" />
+                      <div className="w-3/4 h-4 bg-stone-100 rounded" />
+                    </div>
+                  ))}
               </div>
             </div>
           </section>
@@ -330,7 +430,6 @@ export default function Home() {
 
       case LayoutSection.PROMO: {
         const imageUrl = getField(CmsDataKey.MIDDLE_BANNER_IMAGE_URL);
-        if (!imageUrl && !isLoading) return null;
         return isLoading ? (
           <div
             key={LayoutSection.PROMO}
@@ -362,7 +461,7 @@ export default function Home() {
         );
 
       case LayoutSection.NEWSLETTER:
-        if (!isLoading && !getField("newsletter_title")) return null;
+        // NewsletterDesktop has full NEWSLETTER_DEFAULT fallbacks internally
         return (
           <NewsletterDesktop
             key={LayoutSection.NEWSLETTER}
@@ -379,12 +478,6 @@ export default function Home() {
   const renderMobile = (key: string) => {
     switch (key) {
       case LayoutSection.HERO:
-        if (
-          !isLoading &&
-          heroSlides.length === 0 &&
-          !getField(CmsDataKey.HERO_VIDEO_URL)
-        )
-          return null;
         return (
           <div key={`m-${LayoutSection.HERO}`}>
             {isLoading ? (
@@ -400,20 +493,7 @@ export default function Home() {
                 video_desc={getField(CmsDataKey.HERO_VIDEO_DESC)}
                 video_btn_text={getField(CmsDataKey.HERO_VIDEO_BTN_TEXT)}
                 video_btn_link={getField(CmsDataKey.HERO_VIDEO_BTN_LINK)}
-                slides={heroSlides.map((slide: any) => ({
-                  image_url: slide.image_url,
-                  title: slide.title,
-                  subtitle: slide.subtitle,
-                  btn_text: slide.btn_text,
-                  btn_link:
-                    slide.btn_link ||
-                    (slide.search_query
-                      ? `/store?search=${encodeURIComponent(slide.search_query)}`
-                      : "/store"),
-                  layout: slide.layout || HeroLayout.CENTER_OVERLAY,
-                  bg_style: slide.bg_style || HeroBgStyle.GRADIENT,
-                  bg_color: slide.bg_color || "",
-                }))}
+                slides={heroSlides}
               />
             )}
             <TrustStrip getField={getField} />
@@ -421,7 +501,7 @@ export default function Home() {
         );
 
       case LayoutSection.LOOKBOOK:
-        if (!isLoading && !getField(CmsDataKey.LOOKBOOK_IMAGE_URL)) return null;
+        // ShoppableLookbook renders IMAGE_PLACEHOLDER when no image is configured
         return (
           <ShoppableLookbook
             key={`m-${LayoutSection.LOOKBOOK}`}
@@ -433,13 +513,36 @@ export default function Home() {
           />
         );
 
-      case LayoutSection.SCARCITY:
-        if (
+      case LayoutSection.SCARCITY: {
+        const hasScarcity = !(
           !isLoading &&
           !getField(CmsDataKey.SCARCITY_TIMER_TITLE) &&
           !getField(CmsDataKey.SCARCITY_EXPIRES_AT)
-        )
-          return null;
+        );
+
+        if (!hasScarcity) {
+          return (
+            <section
+              key={`m-${LayoutSection.SCARCITY}`}
+              className="py-6 px-4 bg-[#faf9f6]"
+            >
+              <div className="bg-white border border-stone-200 border-dashed rounded-2xl p-5 flex flex-col items-center justify-center gap-3 shadow-sm opacity-60 pointer-events-none text-center">
+                <div className="w-12 h-12 rounded-full bg-stone-50 text-stone-400 flex items-center justify-center shrink-0">
+                  <span className="text-xl">✦</span>
+                </div>
+                <div>
+                  <h3 className="text-theme-tiny font-black text-stone-400 tracking-[0.25em] uppercase mb-1">
+                    {STOREFRONT_HOME_TEXT.SPECIAL_OFFERS}
+                  </h3>
+                  <p className="text-[11px] text-stone-500 leading-relaxed">
+                    {STOREFRONT_HOME_TEXT.MOBILE_PROMO_COMING_SOON}
+                  </p>
+                </div>
+              </div>
+            </section>
+          );
+        }
+
         return (
           <ScarcityBlock
             key={`m-${LayoutSection.SCARCITY}`}
@@ -452,12 +555,10 @@ export default function Home() {
             btn_link={getField(CmsDataKey.SCARCITY_BTN_LINK)}
           />
         );
+      }
 
       case LayoutSection.SOCIAL_PROOF:
-        if (!isLoading) {
-          const testimonials = getField(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS);
-          if (!testimonials || testimonials.length === 0) return null;
-        }
+        // TestimonialSlider falls back to TESTIMONIALS_SLIDER_DEFAULT when no CMS testimonials
         return (
           <TestimonialSlider
             key={`m-${LayoutSection.SOCIAL_PROOF}`}
@@ -481,7 +582,6 @@ export default function Home() {
         );
 
       case LayoutSection.CATEGORIES:
-        if (!isLoading && categories.length === 0) return null;
         return (
           <section
             key={`m-${LayoutSection.CATEGORIES}`}
@@ -500,26 +600,90 @@ export default function Home() {
             </div>
             <div className="flex gap-4 overflow-x-auto scrollbar-none pb-2 snap-x snap-mandatory">
               {isLoading
-                ? Array.from({ length: 6 }).map((_, i) => (
+                ? Array.from({ length: 6 }).map((_, i) => {
+                    const aspect =
+                      getField(CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE) ||
+                      "aspect-square";
+                    const radius =
+                      getField(CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE) ||
+                      "rounded-full";
+                    return (
+                      <div
+                        key={i}
+                        className="flex flex-col items-center gap-3.5 shrink-0 snap-start w-[84px] sm:w-[100px]"
+                      >
+                        <div
+                          className={`w-full ${aspect} ${radius} bg-gray-100 animate-pulse`}
+                        />
+                        <div className="w-12 h-2.5 rounded bg-gray-100 animate-pulse" />
+                      </div>
+                    );
+                  })
+                : categories.length === 0
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col items-center gap-2 shrink-0 snap-start"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-stone-100 border border-stone-100 flex items-center justify-center">
+                          <span className="text-stone-300 text-lg select-none">
+                            ✦
+                          </span>
+                        </div>
+                        <div className="w-12 h-2.5 rounded bg-stone-100" />
+                      </div>
+                    ))
+                  : categories.slice(0, 8).map((cat, idx) => (
+                      <div key={idx} className="snap-start">
+                        <MobileCategoryPill
+                          cat={cat}
+                          aspectRatio={
+                            getField(CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE) ||
+                            "aspect-square"
+                          }
+                          borderRadius={
+                            getField(
+                              CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE,
+                            ) || "rounded-full"
+                          }
+                        />
+                      </div>
+                    ))}
+
+              {/* Sparse Inventory Fallback for Mobile Categories */}
+              {!isLoading &&
+                categories.length > 0 &&
+                categories.length < 4 &&
+                Array.from({ length: 4 - categories.length }).map((_, i) => {
+                  const aspect =
+                    getField(CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE) ||
+                    "aspect-square";
+                  const radius =
+                    getField(CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE) ||
+                    "rounded-full";
+                  return (
                     <div
-                      key={i}
-                      className="flex flex-col items-center gap-2 shrink-0 snap-start"
+                      key={`fallback-m-${i}`}
+                      className="flex flex-col items-center gap-3.5 shrink-0 snap-start opacity-60 pointer-events-none w-[84px] sm:w-[100px]"
                     >
-                      <div className="w-14 h-14 rounded-full bg-gray-100 animate-pulse" />
-                      <div className="w-12 h-2.5 rounded bg-gray-100 animate-pulse" />
+                      <div
+                        className={`w-full ${aspect} ${radius} bg-stone-50 border border-stone-200 border-dashed flex items-center justify-center`}
+                      >
+                        <span className="text-stone-300 text-xl select-none">
+                          ✦
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider">
+                        {STOREFRONT_HOME_TEXT.COMING_SOON}
+                      </div>
                     </div>
-                  ))
-                : categories.slice(0, 8).map((cat, idx) => (
-                    <div key={idx} className="snap-start">
-                      <MobileCategoryPill cat={cat} />
-                    </div>
-                  ))}
+                  );
+                })}
             </div>
           </section>
         );
 
       case LayoutSection.PRODUCTS:
-        if (!productsLoading && products.length === 0) return null;
         return (
           <section
             key={`m-${LayoutSection.PRODUCTS}`}
@@ -548,18 +712,59 @@ export default function Home() {
                       <Sk w="w-1/3" h="h-4" />
                     </div>
                   ))
-                : products.slice(0, 4).map((p, idx) => (
-                    <ul key={p.id} className="h-full list-none p-0 m-0">
-                      <ProductCard product={p} idx={idx} />
-                    </ul>
-                  ))}
+                : products.length === 0
+                  ? Array.from({ length: 4 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="flex flex-col bg-white rounded-2xl p-3 gap-2 border border-stone-100"
+                      >
+                        <div className="aspect-square bg-gradient-to-br from-stone-50 to-stone-100 rounded-xl flex items-center justify-center">
+                          <span className="text-stone-300 text-3xl select-none">
+                            ✦
+                          </span>
+                        </div>
+                        <div className="w-3/4 h-3 bg-stone-100 rounded" />
+                        <div className="w-1/3 h-4 bg-stone-100 rounded" />
+                      </div>
+                    ))
+                  : products.slice(0, 4).map((p, idx) => (
+                      <ul key={p.id} className="h-full list-none p-0 m-0">
+                        <ProductCard product={p} idx={idx} />
+                      </ul>
+                    ))}
+
+              {/* Sparse Inventory Fallback for Mobile Products */}
+              {!productsLoading &&
+                products.length > 0 &&
+                products.length < 4 &&
+                Array.from({
+                  length:
+                    (4 - products.length) % 2 !== 0
+                      ? 4 -
+                        products.length +
+                        (products.length % 2 !== 0 ? 1 : 0)
+                      : 4 - products.length,
+                }).map((_, i) => (
+                  <div
+                    key={`fallback-m-${i}`}
+                    className="flex flex-col bg-white rounded-2xl p-3 gap-2 border border-stone-200 border-dashed opacity-60 pointer-events-none"
+                  >
+                    <div className="aspect-square bg-gradient-to-br from-stone-50 to-stone-100 rounded-xl flex flex-col items-center justify-center gap-1">
+                      <span className="text-stone-300 text-2xl select-none">
+                        ✦
+                      </span>
+                      <span className="text-stone-400 text-[10px] font-semibold uppercase tracking-widest">
+                        {STOREFRONT_HOME_TEXT.MORE_SOON}
+                      </span>
+                    </div>
+                  </div>
+                ))}
             </div>
           </section>
         );
 
       case LayoutSection.PROMO: {
         const imageUrl = getField(CmsDataKey.MIDDLE_BANNER_IMAGE_URL);
-        if (!imageUrl && !isLoading) return null;
         return isLoading ? (
           <div
             key={`m-${LayoutSection.PROMO}`}
@@ -589,6 +794,15 @@ export default function Home() {
           />
         );
 
+      case LayoutSection.NEWSLETTER:
+        // NewsletterDesktop has full NEWSLETTER_DEFAULT fallbacks internally
+        return (
+          <NewsletterDesktop
+            key={`m-${LayoutSection.NEWSLETTER}`}
+            getField={getField}
+          />
+        );
+
       default:
         return null;
     }
@@ -605,32 +819,19 @@ export default function Home() {
 
         {/* Always-rendered supplementary sections (only if not already placed via layout key) */}
         {!layout.includes("social_proof") && (
-          <>
-            {(isLoading ||
-              (getField(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS) &&
-                getField(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS).length > 0)) && (
-              <TestimonialsDesktop getField={getField} />
-            )}
-          </>
+          // TestimonialsDesktop falls back to TESTIMONIALS_DEFAULT internally
+          <TestimonialsDesktop getField={getField} />
         )}
-        {(isLoading ||
-          getField("brand_highlight_title") ||
-          getField("brand_highlight_image_url")) && (
-          <BrandHighlight getField={getField} />
-        )}
+        {/* BrandHighlight always renders — falls back to text-only layout when no image */}
+        <BrandHighlight getField={getField} />
       </div>
 
       {/* ── MOBILE ──────────────────────────────────────────────────────────── */}
       <div className="block lg:hidden min-h-screen bg-background">
         {layout.map((key) => renderMobile(key))}
         {!layout.includes("social_proof") && (
-          <>
-            {(isLoading ||
-              (getField(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS) &&
-                getField(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS).length > 0)) && (
-              <TestimonialsMobile getField={getField} />
-            )}
-          </>
+          // TestimonialsMobile falls back to TESTIMONIALS_DEFAULT internally
+          <TestimonialsMobile getField={getField} />
         )}
       </div>
     </div>

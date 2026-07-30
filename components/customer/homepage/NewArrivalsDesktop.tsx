@@ -1,6 +1,7 @@
 "use client";
 
-import { useReducer, useEffect, useRef } from "react";
+import { useReducer, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -17,28 +18,22 @@ import { useImageColors } from "@/hooks/useImageColors";
 import { WishListBtn } from "@/components/customer/WishListBtn";
 import { AddToCart } from "@/components/customer/AddToCart";
 import { BuyBtn } from "@/components/customer/BuyBtn";
-import { BuyBtnMode } from "@/utils/Types";
+import { BuyBtnMode, Product } from "@/utils/Types";
 import { useAppSelector } from "@/hooks/reduxHooks";
 import type { RootState } from "@/lib/store";
-import { fetchProducts } from "@/utils/commonAPiClient";
+import { fetchProducts, fetchCategories } from "@/utils/commonAPiClient";
+import { NEW_ARRIVALS_TEXT } from "@/constants/customerText";
+import { resolveDisplayPrice } from "@/lib/utils";
+import { StorefrontProduct } from "@/utils/StorefrontTypes";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Enums
 // ─────────────────────────────────────────────────────────────────────────────
 
-export enum NewArrivalFilter {
-  ALL = "all",
-  EARBUDS = "earbuds",
-  HEADPHONES = "headphones",
-  GAMING = "gaming",
-  ANC = "anc",
-  PREMIUM = "premium",
-}
+export type NewArrivalFilter = string;
 
 export enum NewArrivalActionType {
   SET_CATEGORY = "SET_CATEGORY",
-  SET_PRODUCTS = "SET_PRODUCTS",
-  SET_LOADING = "SET_LOADING",
   OPEN_QUICK_VIEW = "OPEN_QUICK_VIEW",
   CLOSE_QUICK_VIEW = "CLOSE_QUICK_VIEW",
 }
@@ -47,19 +42,16 @@ export enum NewArrivalActionType {
 // 2. Interfaces
 // ─────────────────────────────────────────────────────────────────────────────
 
+
 export interface NewArrivalState {
-  category: NewArrivalFilter;
-  products: any[];
-  loading: boolean;
+  category: string;
   drawerOpen: boolean;
-  activeProduct: any | null;
+  activeProduct: StorefrontProduct | null;
 }
 
 export type NewArrivalAction =
-  | { type: NewArrivalActionType.SET_CATEGORY; category: NewArrivalFilter }
-  | { type: NewArrivalActionType.SET_PRODUCTS; products: any[] }
-  | { type: NewArrivalActionType.SET_LOADING; loading: boolean }
-  | { type: NewArrivalActionType.OPEN_QUICK_VIEW; product: any }
+  | { type: NewArrivalActionType.SET_CATEGORY; category: string }
+  | { type: NewArrivalActionType.OPEN_QUICK_VIEW; product: StorefrontProduct }
   | { type: NewArrivalActionType.CLOSE_QUICK_VIEW };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,37 +79,28 @@ export const NEW_ARRIVALS_CONFIG = {
   IMAGE_HEIGHT_PX: 220,
 } as const;
 
-export const CATEGORY_CHIPS = [
-  { label: "All", value: NewArrivalFilter.ALL },
-  { label: "Earbuds", value: NewArrivalFilter.EARBUDS },
-  { label: "Headphones", value: NewArrivalFilter.HEADPHONES },
-  { label: "Gaming", value: NewArrivalFilter.GAMING },
-  { label: "ANC", value: NewArrivalFilter.ANC },
-  { label: "Premium", value: NewArrivalFilter.PREMIUM },
-] as const;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // 4. Helper Logic (Deterministic Fallbacks for UI Consistency)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const getProductBadge = (product: any): string | null => {
+const getProductBadge = (product: Partial<StorefrontProduct> | null | undefined): string | null => {
   if (!product) return null;
   if (product.badge) return product.badge;
 
   // Priority logic fallback based on properties or deterministic mod check for aesthetic variance
-  if (product.isNew) return "NEW";
+  if (product.isNew) return NEW_ARRIVALS_TEXT.BADGE_NEW;
 
   const idStr = String(product.id || "");
   const idNum = parseInt(idStr.replace(/[^0-9]/g, ""), 10) || 0;
   const mod = idNum % 4;
-  if (mod === 0) return "NEW";
+  if (mod === 0) return NEW_ARRIVALS_TEXT.BADGE_NEW;
   if (mod === 1) return "BEST SELLER";
   if (mod === 2) return "TRENDING";
   return null;
 };
 
 const getProductRating = (
-  product: any,
+  product: Partial<StorefrontProduct> | null | undefined,
 ): { rating: number; reviewCount: number } => {
   if (!product)
     return {
@@ -138,40 +121,13 @@ const getProductRating = (
   return { rating: Number(mockRating.toFixed(1)), reviewCount: mockReviews };
 };
 
-const getPricing = (product: any) => {
-  if (!product) {
-    return {
-      price: 0,
-      mrp: 0,
-      discountPercent: 0,
-      hasDiscount: false,
-    };
-  }
-  const price = Number(product.variants?.[0]?.price ?? product.base_price ?? 0);
-  const discountPercent = Number(product.discount_percent ?? 0);
-
-  let mrp = price;
-  const hasDiscount = discountPercent > 0;
-  if (hasDiscount) {
-    mrp = Math.floor(price / (1 - discountPercent / 100));
-  }
-
-  return {
-    price,
-    mrp,
-    discountPercent,
-    hasDiscount,
-  };
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. Reducer Implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
 const initialState: NewArrivalState = {
-  category: NewArrivalFilter.ALL,
-  products: [],
-  loading: true,
+  category: "all",
   drawerOpen: false,
   activeProduct: null,
 };
@@ -182,11 +138,7 @@ function newArrivalReducer(
 ): NewArrivalState {
   switch (action.type) {
     case NewArrivalActionType.SET_CATEGORY:
-      return { ...state, category: action.category, loading: true };
-    case NewArrivalActionType.SET_PRODUCTS:
-      return { ...state, products: action.products, loading: false };
-    case NewArrivalActionType.SET_LOADING:
-      return { ...state, loading: action.loading };
+      return { ...state, category: action.category };
     case NewArrivalActionType.OPEN_QUICK_VIEW:
       return { ...state, activeProduct: action.product, drawerOpen: true };
     case NewArrivalActionType.CLOSE_QUICK_VIEW:
@@ -233,14 +185,16 @@ function SectionHeader() {
 
 function FilterChips({
   active,
+  categories,
   onSelect,
 }: {
-  active: NewArrivalFilter;
-  onSelect: (category: NewArrivalFilter) => void;
+  active: string;
+  categories: { label: string; value: string }[];
+  onSelect: (category: string) => void;
 }) {
   return (
     <div className="flex gap-2 overflow-x-auto scrollbar-none pb-4 mb-8 select-none">
-      {CATEGORY_CHIPS.map((chip) => {
+      {categories.map((chip) => {
         const isSelected = active === chip.value;
         return (
           <button
@@ -275,14 +229,14 @@ function ProductCard({
   const { bg: bgColor } = useImageColors(imageUrl);
   const badge = getProductBadge(product);
   const { rating, reviewCount } = getProductRating(product);
-  const { price, mrp, discountPercent, hasDiscount } = getPricing(product);
+  const { price, mrp, discountPercent, hasDiscount } = resolveDisplayPrice(product);
 
   const { items } = useAppSelector((state: RootState) => state.cart);
   const cartItem = items?.find((item) => item.productVariantId === variantId);
   const isInCart = !!(cartItem && cartItem.quantity > 0);
 
   const badgeStyles: Record<string, string> = {
-    NEW: "bg-indigo-50 text-indigo-600 border border-indigo-100",
+    [NEW_ARRIVALS_TEXT.BADGE_NEW]: "bg-indigo-50 text-indigo-600 border border-indigo-100",
     "BEST SELLER": "bg-orange-50 text-orange-600 border border-orange-100",
     TRENDING: "bg-emerald-50 text-emerald-600 border border-emerald-100",
     LIMITED: "bg-rose-50 text-rose-600 border border-rose-100",
@@ -290,11 +244,12 @@ function ProductCard({
 
   return (
     <div className="group relative flex flex-col bg-white border border-gray-100 rounded-[var(--radius)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-lg w-full h-full">
+      <Link href={`/store/${product.id}`} className="absolute inset-0 z-10" />
       {/* Top Bar: Badge & Wishlist */}
-      <div className="absolute top-3 inset-x-3 flex justify-between items-center z-10 pointer-events-none">
+      <div className="absolute top-3 inset-x-3 flex justify-between items-center z-20 pointer-events-none">
         {badge ? (
           <span
-            className={`px-2.5 py-1 text-xs font-bold uppercase rounded-md tracking-wider pointer-events-auto ${badgeStyles[badge] ?? badgeStyles.NEW}`}
+            className={`px-2.5 py-1 text-xs font-bold uppercase rounded-md tracking-wider pointer-events-auto ${badgeStyles[badge] ?? badgeStyles[NEW_ARRIVALS_TEXT.BADGE_NEW]}`}
           >
             {badge}
           </span>
@@ -315,7 +270,7 @@ function ProductCard({
       {/* Image Container - Full width, aspect ratio 4:5 on desktop */}
       <div
         style={{ background: bgColor || "#F8FAFC" }}
-        className="relative aspect-square md:aspect-[4/5] w-full overflow-hidden flex items-center justify-center transition-colors duration-500"
+        className="relative aspect-square md:aspect-[4/5] w-full overflow-hidden flex items-center justify-center transition-colors duration-500 pointer-events-none z-0"
       >
         <Image
           src={imageUrl}
@@ -327,7 +282,7 @@ function ProductCard({
       </div>
 
       {/* Info Content Area */}
-      <div className="p-4 flex flex-col flex-grow bg-white">
+      <div className="p-4 flex flex-col flex-grow bg-white pointer-events-none z-0">
         {/* Category name */}
         <div className="mb-1 text-xxs font-semibold text-gray-400 uppercase tracking-wider truncate">
           {product.category?.name || "Audio"}
@@ -371,7 +326,7 @@ function ProductCard({
         </div>
 
         {/* Actions Row */}
-        <div className="flex gap-2.5 items-center mt-auto pt-3 border-t border-gray-100">
+        <div className="flex gap-2.5 items-center mt-auto pt-3 border-t border-gray-100 pointer-events-auto relative z-20">
           {variantId && (
             <AddToCart
               productVariantId={variantId}
@@ -404,8 +359,8 @@ function ProductSlider({
   products,
   onQuickView,
 }: {
-  products: any[];
-  onQuickView: (product: any) => void;
+  products: StorefrontProduct[];
+  onQuickView: (product: StorefrontProduct) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -480,6 +435,26 @@ function ProductSlider({
             <ProductCard product={product} onQuickView={onQuickView} />
           </div>
         ))}
+
+        {/* Sparse Inventory Fallback */}
+        {products.length > 0 &&
+          products.length < 4 &&
+          Array.from({ length: 4 - products.length }).map((_, i) => (
+            <div
+              key={`fallback-${i}`}
+              className="w-[80vw] sm:w-[45vw] lg:w-[290px] xl:w-[312px] shrink-0 snap-center lg:snap-start flex flex-col bg-white border border-gray-100 rounded-[var(--radius)] p-4 gap-3 opacity-60 pointer-events-none"
+            >
+              <div className="aspect-[4/3] w-full bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-100 border-dashed rounded-xl flex flex-col items-center justify-center gap-2">
+                <span className="text-gray-300 text-3xl select-none">✦</span>
+                <span className="text-gray-400 text-xs font-semibold uppercase tracking-widest">
+                  {NEW_ARRIVALS_TEXT.NEW_ARRIVALS}
+                </span>
+              </div>
+              <div className="w-1/3 h-3 bg-gray-50 rounded mt-2" />
+              <div className="w-3/4 h-5 bg-gray-50 rounded" />
+              <div className="w-1/4 h-4 bg-gray-50 rounded" />
+            </div>
+          ))}
       </div>
 
       {/* Right Arrow */}
@@ -500,7 +475,7 @@ function QuickViewDrawer({
   onClose,
 }: {
   isOpen: boolean;
-  product: any;
+  product: StorefrontProduct | null;
   onClose: () => void;
 }) {
   const imageUrl =
@@ -511,7 +486,7 @@ function QuickViewDrawer({
 
   const { bg: bgColor } = useImageColors(imageUrl);
   const { rating, reviewCount } = getProductRating(product || {});
-  const { price, mrp, discountPercent, hasDiscount } = getPricing(
+  const { price, mrp, discountPercent, hasDiscount } = resolveDisplayPrice(
     product || {},
   );
 
@@ -666,40 +641,32 @@ export function NewArrivalsDesktop({
 }) {
   const [state, dispatch] = useReducer(newArrivalReducer, initialState);
 
-  // Fetch products automatically when active category filter changes
-  useEffect(() => {
-    let active = true;
-
-    const loadNewArrivals = async () => {
-      dispatch({ type: NewArrivalActionType.SET_LOADING, loading: true });
-      try {
-        const queryParams: any = {
-          limit: 12,
-        };
-        if (state.category !== NewArrivalFilter.ALL) {
-          queryParams.category = state.category;
-        }
-
-        const res = await fetchProducts(queryParams);
-        if (active) {
-          dispatch({
-            type: NewArrivalActionType.SET_PRODUCTS,
-            products: res.data || [],
-          });
-        }
-      } catch (err) {
-        if (active) {
-          dispatch({ type: NewArrivalActionType.SET_PRODUCTS, products: [] });
-        }
+  const { data: categories = [{ label: "All", value: "all" }] } = useQuery({
+    queryKey: ["categories", "new-arrivals"],
+    queryFn: async () => {
+      const res = await fetchCategories();
+      if (res && Array.isArray(res)) {
+        return [
+          { label: "All", value: "all" },
+          ...res.slice(0, 6).map((c: any) => ({ label: c.name, value: c.id })),
+        ];
       }
-    };
+      return [{ label: "All", value: "all" }];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-    loadNewArrivals();
-
-    return () => {
-      active = false;
-    };
-  }, [state.category]);
+  const { data: products = [], isLoading: loading } = useQuery({
+    queryKey: ["new-arrivals", state.category],
+    queryFn: async () => {
+      const queryParams: any = { limit: 12 };
+      if (state.category !== "all") {
+        queryParams.category = state.category;
+      }
+      const res = await fetchProducts(queryParams);
+      return res.data || [];
+    },
+  });
 
   const handleCategorySelect = (category: NewArrivalFilter) => {
     dispatch({ type: NewArrivalActionType.SET_CATEGORY, category });
@@ -718,9 +685,13 @@ export function NewArrivalsDesktop({
       <div className="max-w-screen-xl mx-auto">
         <SectionHeader />
 
-        <FilterChips active={state.category} onSelect={handleCategorySelect} />
+        <FilterChips
+          active={state.category}
+          categories={categories}
+          onSelect={handleCategorySelect}
+        />
 
-        {state.loading ? (
+        {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {Array.from({ length: 4 }).map((_, i) => (
               <div
@@ -734,13 +705,21 @@ export function NewArrivalsDesktop({
               </div>
             ))}
           </div>
-        ) : state.products.length === 0 ? (
-          <div className="text-center py-16 text-gray-500 font-medium">
-            {NEW_ARRIVALS_CONFIG.NO_PRODUCTS_MSG}
+        ) : products.length === 0 ? (
+          <div className="bg-white border border-gray-200 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center gap-4 text-center opacity-70 w-full max-w-2xl mx-auto my-8">
+            <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-2">
+              <span className="text-3xl text-gray-300">✦</span>
+            </div>
+            <h3 className="text-theme-h5 font-bold text-gray-900">
+              {NEW_ARRIVALS_TEXT.NO_ARRIVALS_YET}
+            </h3>
+            <p className="text-gray-500 max-w-sm">
+              {NEW_ARRIVALS_TEXT.NO_ARRIVALS_DESC}
+            </p>
           </div>
         ) : (
           <ProductSlider
-            products={state.products}
+            products={products}
             onQuickView={handleOpenQuickView}
           />
         )}

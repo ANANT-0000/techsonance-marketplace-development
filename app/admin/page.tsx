@@ -1,7 +1,5 @@
 "use client";
-import { Navbar } from "@/components/admin/Navbar";
 import { DashboardChart } from "@/components/admin/DashboardChart";
-import { ADMIN_DASHBOARD_STATS, ACTIVE_INSTANCES } from "@/constants/admin";
 import {
   Store,
   Users,
@@ -163,9 +161,9 @@ export default function AdminDashboardPage() {
                 <Activity size={18} />
               </div>
             </div>
-            <p className="text-theme-h3 font-bold text-emerald-600">
+            {/* <p className="text-theme-h3 font-bold text-emerald-600">
               {ADMIN_DASHBOARD_STATS.systemsOperations}%
-            </p>
+            </p> */}
             <p className="text-theme-caption font-medium text-gray-500 mt-2">
               All systems operational
             </p>

@@ -161,6 +161,8 @@ function toIconKey(name: string): string {
 
 export function TrustStrip({ getField }: { getField?: (k: string) => any }) {
   const cmsBadges = getField ? getField("social_proof_badges") : null;
+  const layoutStyle = getField ? getField("trust_strip_layout") || "default" : "default";
+  const bgColor = getField ? getField("trust_strip_bg_color") || "bg-white" : "bg-white";
   
   // Fall back to default badges if CMS configuration is missing or holds empty titles (visual placeholder state)
   const hasValidCmsBadges =
@@ -169,15 +171,57 @@ export function TrustStrip({ getField }: { getField?: (k: string) => any }) {
     cmsBadges.some((badge: any) => (badge.title || badge.label || "").trim() !== "");
 
   if (!hasValidCmsBadges) {
-    return null;
+    // Fall back to the default illustrated badges so the strip is never blank
+    return (
+      <section className={`trust-strip ${bgColor} border-y border-gray-100 py-3.5 lg:py-6`}>
+        <div className="max-w-screen-xl mx-auto px-4 lg:px-16 xl:px-24">
+          <div className="grid grid-cols-4 gap-1 lg:gap-0">
+            {DEFAULT_TRUST_BADGES.map((badge, index) => {
+              const CustomIcon = IconMap[badge.icon];
+              let borderClass = "";
+              if (layoutStyle !== "minimal") {
+                if (index === 0) borderClass = "lg:border-none lg:pr-6 lg:pl-0";
+                else if (index === 1) borderClass = "lg:border-l lg:border-gray-100 lg:px-6";
+                else if (index === 2) borderClass = "lg:border-l lg:border-gray-100 lg:px-6";
+                else if (index === 3) borderClass = "lg:border-l lg:border-gray-100 lg:pl-6 lg:pr-0";
+              } else {
+                borderClass = "lg:px-4 justify-center";
+              }
+              return (
+                <div
+                  key={badge.id}
+                  className={`flex flex-col lg:flex-row items-center lg:items-center text-center lg:text-left gap-1 lg:gap-3.5 ${borderClass}`}
+                >
+                  {CustomIcon ? (
+                    <CustomIcon />
+                  ) : (
+                    <div className="shrink-0 w-8 h-8 lg:w-11 lg:h-11 rounded-xl bg-gray-50 flex items-center justify-center border border-gray-100">
+                      <LucideIcons.HelpCircle size={TRUST_STRIP_CONFIG.ICON_SIZE} className="text-gray-700" strokeWidth={1.5} />
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center lg:items-start">
+                    <p className="text-[10px] sm:text-xs lg:text-sm font-bold text-gray-900 leading-tight">
+                      {badge.title}
+                    </p>
+                    <p className="text-[9px] sm:text-[10px] lg:text-xs text-gray-500 mt-0.5">
+                      {badge.subtitle}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    );
   }
 
   const badgesData = cmsBadges;
 
   return (
-    <section className="trust-strip bg-white border-y border-gray-100 py-3.5 lg:py-6">
+    <section className={`trust-strip ${bgColor} border-y border-gray-100 py-3.5 lg:py-6 transition-colors duration-300`}>
       <div className="max-w-screen-xl mx-auto px-4 lg:px-16 xl:px-24">
-        <div className="grid grid-cols-4 gap-1 lg:gap-0">
+        <div className={`grid grid-cols-${Math.min(badgesData.length, 4)} gap-1 lg:gap-0`}>
           {badgesData.map((badge: any, index: number) => {
             // Check if we have a custom graphical illustration matching the badge icon type
             const CustomIcon = IconMap[badge.icon];
@@ -188,14 +232,16 @@ export function TrustStrip({ getField }: { getField?: (k: string) => any }) {
 
             // Border styling: clean vertical borders on desktop, none on mobile
             let borderClass = "";
-            if (index === 0) {
-              borderClass = "lg:border-none lg:pr-6 lg:pl-0";
-            } else if (index === 1) {
-              borderClass = "lg:border-l lg:border-gray-100 lg:px-6";
-            } else if (index === 2) {
-              borderClass = "lg:border-l lg:border-gray-100 lg:px-6";
-            } else if (index === 3) {
-              borderClass = "lg:border-l lg:border-gray-100 lg:pl-6 lg:pr-0";
+            if (layoutStyle !== "minimal") {
+              if (index === 0) {
+                borderClass = "lg:border-none lg:pr-6 lg:pl-0";
+              } else if (index === badgesData.length - 1) {
+                borderClass = "lg:border-l lg:border-gray-100 lg:pl-6 lg:pr-0";
+              } else {
+                borderClass = "lg:border-l lg:border-gray-100 lg:px-6";
+              }
+            } else {
+              borderClass = "lg:px-4 justify-center";
             }
 
             return (

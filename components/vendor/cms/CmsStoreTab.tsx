@@ -5,6 +5,7 @@ import React from "react";
 import { ImageUploadField } from "./ImageUploadField";
 import { toDatetimeLocal } from "@/lib/utils";
 import { ColorField } from "./ColorField";
+import { UiText } from "@/constants/ui-text";
 
 export const CmsStoreTab = ({
   data,
@@ -54,7 +55,7 @@ export const CmsStoreTab = ({
             label={UILabels.FIELDS.TIMER_HEADING_TITLE}
             value={data.promo_timer_title || ""}
             onChange={(v: string) => set("promo_timer_title", v)}
-            placeholder="e.g. FLASH SALE ENDS IN"
+            placeholder={UiText.PLACEHOLDERS.FLASH_SALE}
           />
 
           <InputField
@@ -68,14 +69,14 @@ export const CmsStoreTab = ({
             label={UILabels.FIELDS.ACTION_BUTTON_TEXT}
             value={data.promo_btn_text || ""}
             onChange={(v: string) => set("promo_btn_text", v)}
-            placeholder="e.g. Shop the Sale"
+            placeholder={UiText.PLACEHOLDERS.SHOP_SALE}
           />
 
           <InputField
             label={UILabels.FIELDS.ACTION_BUTTON_LINK_URL}
             value={data.promo_btn_link || ""}
             onChange={(v: string) => set("promo_btn_link", v)}
-            placeholder="e.g. /store"
+            placeholder={UiText.PLACEHOLDERS.STORE_PATH}
             mono
           />
 
@@ -84,7 +85,7 @@ export const CmsStoreTab = ({
               label={UILabels.FIELDS.MARKETING_ALERT_BANNER_TEXT}
               value={data.promo_alert_text || ""}
               onChange={(v: string) => set("promo_alert_text", v)}
-              placeholder="e.g. Use coupon FIRST10 for an extra 10% off!"
+              placeholder={UiText.PLACEHOLDERS.COUPON}
             />
           </div>
 

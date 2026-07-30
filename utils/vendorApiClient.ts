@@ -7,6 +7,8 @@ import {
   ComplianceDocument,
   ComplianceField,
   ComplianceFieldPayload,
+  CreateProductPayload,
+  CreateProductVariantPayload,
   NavItemColType,
   NavItemDisplayType,
   NavItemType,
@@ -153,7 +155,7 @@ export const deleteVendorProductCategory = async (
 // ==========================================
 
 export const createProduct = async (
-  productData: FormData,
+  productData: CreateProductPayload,
   vendorId: string,
   token: string,
   companyId: string,
@@ -165,15 +167,18 @@ export const createProduct = async (
       headers: {
         Authorization: `Bearer ${token}`,
         "company-id": companyId || "",
+        "Content-Type": "application/json",
       },
-      body: productData,
+      body: JSON.stringify(productData),
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
       return {
         status: response.status,
         statusText: response.statusText,
-        message: errorData?.message,
+        message: errorData?.message || null,
+        code: errorData?.code || null,
+        reason: errorData?.reason || null,
       };
     }
     revalidatePath("/vendor/products");
@@ -183,7 +188,7 @@ export const createProduct = async (
   }
 };
 export const updateProduct = async (
-  formData: FormData,
+  formData: CreateProductPayload,
   productId: string,
   token: string,
   companyId: string,
@@ -191,11 +196,12 @@ export const updateProduct = async (
   try {
     const response = await fetch(`${BASE_API_URL}/v1/products/${productId}`, {
       method: "PATCH",
-      body: formData,
+      body: JSON.stringify(formData),
       credentials: "include",
       headers: {
         "company-id": companyId || "",
         Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
     });
     if (!response.ok) {
@@ -203,7 +209,9 @@ export const updateProduct = async (
       return {
         status: response.status,
         statusText: response.statusText,
-        message: errorData?.message,
+        message: errorData?.message || null,
+        code: errorData?.code || null,
+        reason: errorData?.reason || null,
       };
     }
     revalidatePath("/vendor/products");
@@ -237,7 +245,7 @@ export const updateProductVariantStatus = async (
       return {
         status: response.status,
         statusText: response.statusText,
-        message: errorData?.message,
+        message: errorData?.message || null,
       };
     }
 
@@ -273,7 +281,7 @@ export const fetchVendorProducts = async (
     );
     if (response.status !== 200) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     return await response.json();
   } catch (error) {
@@ -297,7 +305,7 @@ export const fetchVendorProductsOptions = async (
     });
     if (response.status !== 200) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     return await response.json();
   } catch (error) {
@@ -321,7 +329,7 @@ export const fetchVendorActiveProducts = async (
     });
     if (response.status !== 200) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     return await response.json();
   } catch (error) {
@@ -346,7 +354,7 @@ export const fetchVendorOneProducts = async (
     });
     if (response.status !== 200) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     return await response.json();
   } catch (error) {
@@ -373,7 +381,7 @@ export const deleteProduct = async (
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     revalidatePath("/vendor/products");
     revalidatePath(`/vendor/products/${productId}`);
@@ -387,26 +395,36 @@ export const deleteProduct = async (
 // ==========================================
 
 export const createProductVariant = async (
-  variantData: FormData,
+  variantData: CreateProductVariantPayload,
   productId: string,
   token: string,
   companyId: string,
 ) => {
   try {
-    const response = await fetch(`${BASE_API_URL}/v1/product-variant`, {
+    const url = `${BASE_API_URL}/v1/product-variant`;
+
+    const response = await fetch(url, {
       method: "POST",
-      body: variantData,
+      body: JSON.stringify(variantData),
       credentials: "include",
       headers: {
         Authorization: `Bearer ${token}`,
         "company-id": companyId || "",
+        "Content-Type": "application/json",
       },
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+
+      return { status: response.status, message: errorData?.message || null };
+    }
+
     const res = await response.json();
     revalidatePath("/vendor/products/variants");
     revalidatePath(`/vendor/products/${productId}/productVariants`);
     revalidatePath("/vendor/products");
-    return res;
+    return { status: response.status, data: res };
   } catch (error) {
     return {
       data: {},
@@ -452,7 +470,7 @@ export const fetchLowStockAlerts = async (token: string, companyId: string) => {
   }
 };
 export const updateProductVariant = async (
-  formData: FormData,
+  formData: CreateProductVariantPayload,
   productId: string,
   variantId: string,
   token: string,
@@ -463,23 +481,24 @@ export const updateProductVariant = async (
       `${BASE_API_URL}/v1/product-variant/${variantId}`,
       {
         method: "PATCH",
-        body: formData,
+        body: JSON.stringify(formData),
         credentials: "include",
         headers: {
           Authorization: `Bearer ${token}`,
           "company-id": companyId || "",
+          "Content-Type": "application/json",
         },
       },
     );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
 
     const res = await response.json();
     revalidatePath(`/vendor/products/${productId}/variants`);
-    return res;
+    return { status: response.status, data: res };
   } catch (error) {
     return {
       data: {},
@@ -536,7 +555,7 @@ export const deleteProductVariant = async (
     );
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     revalidatePath(`/vendor/products/${productId}/variants`);
     revalidatePath("/vendor/products");
@@ -688,7 +707,7 @@ export const fetchUpdateOrderStatus = async (
     );
     if (response.status !== 200) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     return await response.json();
   } catch (error) {}
@@ -712,7 +731,7 @@ export const fetchAddTrackingUrl = async (
     });
     if (response.status !== 201) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     return await response.json();
   } catch (error) {
@@ -742,7 +761,7 @@ export const fetchUpdateTrackingUrl = async (
     });
     if (response.status !== 201) {
       const errorData = await response.json().catch(() => null);
-      return { status: response.status, message: errorData?.message };
+      return { status: response.status, message: errorData?.message || null };
     }
     return await response.json();
   } catch (error) {
@@ -2443,6 +2462,19 @@ export const fetchUpdateTaxSlab = async (
 // NAVBAR API ENDPOINTS
 // ==========================================
 
+export type AnnouncementItemType = "text" | "link" | "feature";
+export type DeviceVisibility = "desktop" | "mobile";
+
+export interface AnnouncementItem {
+  id: string;
+  type: AnnouncementItemType;
+  label: string;
+  target_route?: string;
+  feature_key?: string;
+  visible_on?: DeviceVisibility[];
+  is_highlighted?: boolean;
+}
+
 export interface UpsertNavMenuPayload {
   logo_src?: string;
   logo_alt?: string;
@@ -2457,6 +2489,15 @@ export interface UpsertNavMenuPayload {
   show_account?: boolean;
   show_wishlist?: boolean;
   show_cart?: boolean;
+
+  // Announcement Bar
+  announcement_visible?: boolean;
+  announcement_items_left?: AnnouncementItem[];
+  announcement_items_right?: AnnouncementItem[];
+  announcement_bg_color?: string;
+  announcement_text_color?: string;
+  announcement_text_size?: string;
+  announcement_mobile_alignment?: string;
 }
 
 export interface NavItemMetaPayload {
@@ -2477,16 +2518,141 @@ export interface CreateNavItemPayload {
   menu_id: string;
   parent_id?: string;
   label: string;
-  href: string;
-  item_type: NavItemType;
-  category_id?: string;
+  nav_item_id?: string | null;
+  slug?: string;
+  config?: any;
   has_mega_menu: boolean;
   sort_order?: number;
   root_category_id?: string | null;
   meta?: NavItemMetaPayload;
   layout_type?: NavLayoutType;
-  target_route?: string;
 }
+
+/** GET /v1/navbar/templates */
+export const fetchNavbarTemplates = async (token: string) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/v1/navbar/templates`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return { success: false };
+    const data = await res.json();
+    return { success: true, data };
+  } catch {
+    return { success: false, message: "Network error" };
+  }
+};
+
+/** Product Filters Endpoints */
+export const fetchProductFilters = async (token: string, domain: string) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/v1/product-filters`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "company-domain": domain,
+      },
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return { success: false };
+    const data = await res.json();
+    return { success: true, data };
+  } catch {
+    return { success: false, message: "Network error" };
+  }
+};
+
+export const createProductFilter = async (
+  payload: { name: string; rules: any[] },
+  token: string,
+  domain: string,
+) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/v1/product-filters`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "company-domain": domain,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return { success: false };
+    const data = await res.json();
+    return { success: true, data };
+  } catch {
+    return { success: false, message: "Network error" };
+  }
+};
+
+export const updateProductFilter = async (
+  id: string,
+  payload: { name?: string; rules?: any[] },
+  token: string,
+  domain: string,
+) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/v1/product-filters/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "company-domain": domain,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return { success: false };
+    const data = await res.json();
+    return { success: true, data };
+  } catch {
+    return { success: false, message: "Network error" };
+  }
+};
+
+export const deleteProductFilter = async (
+  id: string,
+  token: string,
+  domain: string,
+) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/v1/product-filters/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "company-domain": domain,
+      },
+    });
+    if (!res.ok) return { success: false };
+    const data = await res.json();
+    return { success: true, data };
+  } catch {
+    return { success: false, message: "Network error" };
+  }
+};
+
+export const copyProductFilter = async (
+  id: string,
+  token: string,
+  domain: string,
+) => {
+  try {
+    const res = await fetch(`${BASE_API_URL}/v1/product-filters/${id}/copy`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "company-domain": domain,
+      },
+    });
+    if (!res.ok) return { success: false };
+    const data = await res.json();
+    return { success: true, data };
+  } catch {
+    return { success: false, message: "Network error" };
+  }
+};
 
 /** GET /v1/navbar â€” public storefront fetch */
 export const fetchNavbarConfig = async (companyId: string) => {

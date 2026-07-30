@@ -20,7 +20,7 @@ import { authToken } from "@/utils/authToken";
 
 // Replaced constants
 
-export function BrandingTab() {
+export function BrandingTab({ registerSave, registerDiscard, setDirty }: any) {
   const companyId = getClientCompanyId();
 
   const [isPending, startTransition] = useTransition();
@@ -46,6 +46,7 @@ export function BrandingTab() {
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(brandingSchema),
@@ -121,30 +122,69 @@ export function BrandingTab() {
   }, [token, setValue]);
 
   const onSubmit = (data: z.infer<typeof brandingSchema>) => {
-    if (!companyId) return;
-    startTransition(async () => {
-      const fd = new FormData();
-      Object.entries(data).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) {
-          if (Array.isArray(v)) {
-            fd.append(k, JSON.stringify(v));
-          } else {
-            fd.append(k, v as string);
+    if (!companyId) return Promise.reject(new Error("No company id"));
+    return new Promise<void>(async (resolve, reject) => {
+      try {
+        const fd = new FormData();
+        Object.entries(data).forEach(([k, v]) => {
+          if (v !== undefined && v !== null) {
+            if (Array.isArray(v)) {
+              fd.append(k, JSON.stringify(v));
+            } else {
+              fd.append(k, v as string);
+            }
           }
+        });
+        Object.entries(files).forEach(([k, v]) => fd.append(k, v));
+        const res = await upsertCompanyBranding(fd, token ?? "", companyId);
+        if (res?.status === 200 || res?.status === 201 || res?.ok) {
+          try {
+            localStorage.removeItem("techsonance_cms_theme");
+          } catch (e) {}
+          setDirty?.("theme", false);
+          reset(data);
+          resolve();
+        } else {
+          reject(new Error(res?.data?.message || "Failed to save branding"));
         }
-      });
-      Object.entries(files).forEach(([k, v]) => fd.append(k, v));
-      const res = await upsertCompanyBranding(fd, token ?? "", companyId);
-      if (res?.status === 200 || res?.status === 201 || res?.ok) {
-        // Refresh local storefront cache if necessary
-        try {
-          localStorage.removeItem("techsonance_cms_theme");
-        } catch (e) {}
+      } catch (err) {
+        reject(err);
       }
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
     });
   };
+
+  useEffect(() => {
+    const sub = watch(() => setDirty?.("theme", true));
+    return () => sub.unsubscribe();
+  }, [watch, setDirty]);
+
+  useEffect(() => {
+    if (registerSave) {
+      registerSave("theme", () => {
+        return new Promise((resolve, reject) => {
+          handleSubmit((data) => {
+            onSubmit(data).then(resolve).catch(reject);
+          }, reject)();
+        });
+      });
+    }
+  }, [registerSave, handleSubmit, files]);
+
+  useEffect(() => {
+    if (registerDiscard) {
+      registerDiscard("theme", () => {
+        if (token && companyId) {
+          fetchCompanyBranding(token, companyId).then((res) => {
+            const d = res?.data?.data ?? res?.data;
+            if (d && typeof d === "object") {
+               reset(d);
+            }
+          });
+        }
+        setDirty?.("theme", false);
+      });
+    }
+  }, [registerDiscard, reset, token, companyId]);
 
   const moveItem = (index: number, direction: "up" | "down") => {
     const layout = [...homepageLayout];
@@ -172,11 +212,11 @@ export function BrandingTab() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-8 pb-10 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 max-h-[70vh] overflow-y-auto pr-2"
+      className="space-y-8 pb-10"
     >
       <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
         <h3 className="text-theme-body-sm font-bold text-gray-800 flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-blue-600 rounded-full" />
+          <span className="w-1.5 h-4 bg-slate-900 rounded-full" />
           {BRANDING_TAB_TEXT.SECTIONS.LOGOS}
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -222,7 +262,7 @@ export function BrandingTab() {
       {/* Colors Section */}
       <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-6">
         <h3 className="text-theme-body-sm font-bold text-gray-800 flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-blue-600 rounded-full" />
+          <span className="w-1.5 h-4 bg-slate-900 rounded-full" />
           {BRANDING_TAB_TEXT.SECTIONS.COLORS}
         </h3>
 
@@ -236,7 +276,7 @@ export function BrandingTab() {
                 key={preset.name}
                 type="button"
                 onClick={() => applyPreset(preset)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50/20 text-theme-caption font-bold text-gray-700 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-slate-50/20 text-theme-caption font-bold text-gray-700 transition-all cursor-pointer"
               >
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-black/10 flex-shrink-0"
@@ -330,7 +370,7 @@ export function BrandingTab() {
       {/* Typography & Layout Selection */}
       <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-6">
         <h3 className="text-theme-body-sm font-bold text-gray-800 flex items-center gap-2">
-          <span className="w-1.5 h-4 bg-blue-600 rounded-full" />
+          <span className="w-1.5 h-4 bg-slate-900 rounded-full" />
           {BRANDING_TAB_TEXT.SECTIONS.TYPOGRAPHY}
         </h3>
 
@@ -434,7 +474,7 @@ export function BrandingTab() {
       <section className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm space-y-6">
         <div>
           <h3 className="text-theme-body-sm font-bold text-gray-800 flex items-center gap-2">
-            <span className="w-1.5 h-4 bg-blue-600 rounded-full" />
+            <span className="w-1.5 h-4 bg-slate-900 rounded-full" />
             {BRANDING_TAB_TEXT.SECTIONS.HOMEPAGE}
           </h3>
           <p className="text-theme-caption text-gray-500 mt-1">
@@ -476,7 +516,7 @@ export function BrandingTab() {
                 key={section.key}
                 className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
                   isEnabled
-                    ? "bg-blue-50/10 border-blue-100 shadow-sm"
+                    ? "bg-slate-50/10 border-blue-100 shadow-sm"
                     : "bg-gray-50/50 border-gray-200 opacity-60"
                 }`}
               >
@@ -531,7 +571,7 @@ export function BrandingTab() {
                     type="button"
                     onClick={() => toggleSection(section.key)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 cursor-pointer ${
-                      isEnabled ? "bg-blue-600" : "bg-gray-200"
+                      isEnabled ? "bg-slate-900" : "bg-gray-200"
                     }`}
                   >
                     <span
@@ -547,9 +587,6 @@ export function BrandingTab() {
         </div>
       </section>
 
-      <div className="flex justify-end pt-2 border-t border-gray-100">
-        <SaveButton isPending={isPending} saved={saved} />
-      </div>
     </form>
   );
 }

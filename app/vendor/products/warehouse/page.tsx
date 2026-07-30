@@ -28,6 +28,7 @@ import { FormInput } from "@/components/common/FormInput";
 import { WAREHOUSE_ADDRESS_FIELDS } from "@/constants";
 import { WAREHOUSE_LOCATIONS_TEXT } from "@/constants/vendorText";
 import { VEDNOR_LOGIN_PATH, VEDNOR_REGISTER_PATH } from "@/constants";
+import { SessionErrorCard } from "@/components/vendor/SessionErrorCard";
 
 interface Address {
   id: string;
@@ -83,14 +84,13 @@ export default function LocationsPage() {
     formState: { errors },
   } = useForm({
     resolver: zodResolver(AddressSchema),
-    mode: "onChange",
+    mode: "onBlur",
     defaultValues: {
       name: "",
       address_for: "warehouse",
       is_default: false,
       phone: "",
       address_line_1: "",
-
       city: "",
       state: "",
       street: "",
@@ -256,6 +256,18 @@ export default function LocationsPage() {
     getWarehouseList();
   }, []);
 
+  // Catch ?create=true from URL and open modal
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("create") === "true") {
+      setClosedLocationForm(true);
+      
+      // Optional: remove the query param so it doesn't re-open on refresh
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+  }, []);
+
   useEffect(() => {
     if (isEditing && selectedLocation) {
       reset({
@@ -295,32 +307,7 @@ export default function LocationsPage() {
   }, [closedLocationForm]);
 
   if (!token || !companyId) {
-    return (
-      <main className="min-h-[80vh] flex items-center justify-center p-6 ">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 max-w-md w-full rounded-2xl shadow-sm border border-gray-100 text-center"
-        >
-          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-5 shadow-sm border border-amber-100/50">
-            <AlertCircle size={28} strokeWidth={1.5} />
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2 tracking-tight">
-            Session Needs Refresh
-          </h2>
-          <p className="text-gray-500 mb-8 text-sm leading-relaxed">
-            We need to verify your account to keep your data secure. Please log
-            in again to continue managing your locations.
-          </p>
-          <a
-            href={VEDNOR_LOGIN_PATH}
-            className="inline-flex items-center justify-center w-full bg-slate-900 hover:bg-slate-800 text-white px-6 py-3 rounded-xl font-medium transition-all shadow-sm hover:shadow-md"
-          >
-            Log In Again
-          </a>
-        </motion.div>
-      </main>
-    );
+    return <SessionErrorCard />;
   }
 
   return (

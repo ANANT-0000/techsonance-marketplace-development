@@ -1,6 +1,7 @@
 import { BASE_API_URL } from "@/constants";
 import { getCompanyDomain } from "@/lib/get-domain";
 import { getCacheConfig } from "./cache";
+import { StorefrontProduct as Product } from "./StorefrontTypes";
 
 export const fetchProduct = async (productId: string) => {
   const companyDomain = await getCompanyDomain();
@@ -19,6 +20,89 @@ export const fetchProduct = async (productId: string) => {
     return await response.json();
   } catch (error) {
     // ignore
+  }
+};
+
+export const fetchRelatedProducts = async (
+  productId: string,
+  limit: number = 8,
+): Promise<Product[]> => {
+  const companyDomain = await getCompanyDomain();
+  try {
+    const response = await fetch(
+      `${BASE_API_URL}/v1/products/${productId}/related?limit=${limit}`,
+      {
+        method: "GET",
+        ...getCacheConfig(300),
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "company-domain": companyDomain,
+        },
+      },
+    );
+    if (response.status !== 200) {
+      return [];
+    }
+    const result = await response.json();
+    return Array.isArray(result) ? result : (result.data || []);
+  } catch (error) {
+    return [];
+  }
+};
+
+export const fetchRecommendedProducts = async (
+  productId: string,
+  limit: number = 8,
+): Promise<Product[]> => {
+  const companyDomain = await getCompanyDomain();
+  try {
+    const response = await fetch(
+      `${BASE_API_URL}/v1/products/${productId}/recommended?limit=${limit}`,
+      {
+        method: "GET",
+        ...getCacheConfig(300),
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "company-domain": companyDomain,
+        },
+      },
+    );
+    if (response.status !== 200) {
+      return [];
+    }
+    const result = await response.json();
+    return Array.isArray(result) ? result : (result.data || []);
+  } catch (error) {
+    return [];
+  }
+};
+
+export const fetchOnSaleProducts = async (
+  limit: number = 8,
+): Promise<Product[]> => {
+  const companyDomain = await getCompanyDomain();
+  try {
+    const response = await fetch(
+      `${BASE_API_URL}/v1/products/special/on-sale?limit=${limit}`,
+      {
+        method: "GET",
+        ...getCacheConfig(300),
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          "company-domain": companyDomain,
+        },
+      },
+    );
+    if (response.status !== 200) {
+      return [];
+    }
+    const result = await response.json();
+    return Array.isArray(result) ? result : (result.data || []);
+  } catch (error) {
+    return [];
   }
 };
 export const fetchProductVariantDetails = async (id: string) => {
@@ -319,3 +403,55 @@ export async function fetchCompanyProfile() {
     return null;
   }
 }
+
+
+export const fetchCollectionProducts = async (
+  slug: string,
+  params: ProductQueryParams = {},
+): Promise<ProductsResponse> => {
+  const companyDomain = await getCompanyDomain();
+
+  const searchParams = new URLSearchParams();
+  if (params.search) searchParams.set("search", params.search);
+  if (params.category) searchParams.set("category", params.category);
+  if (params.min_price !== undefined)
+    searchParams.set("min_price", String(params.min_price));
+  if (params.max_price !== undefined)
+    searchParams.set("max_price", String(params.max_price));
+  if (params.sort_by) searchParams.set("sort_by", params.sort_by);
+  if (params.offset !== undefined)
+    searchParams.set("offset", String(params.offset));
+  if (params.limit !== undefined)
+    searchParams.set("limit", String(params.limit));
+
+  const qs = searchParams.toString();
+  const url = `${BASE_API_URL}/v1/products/collection/${slug}${qs ? `?${qs}` : ""}`;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      cache: "no-store",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "company-domain": companyDomain,
+      },
+    });
+    if (response.status !== 200) {
+      return { data: [], total: 0, offset: 0, limit: 12, totalPages: 0 };
+    }
+    const json = await response.json();
+    const payload = json?.data ?? json;
+
+    return {
+      data: Array.isArray(payload.data) ? payload.data : [],
+      total: payload.total || 0,
+      offset: payload.offset || 0,
+      limit: payload.limit || 12,
+      totalPages: payload.totalPages || 0,
+    };
+  } catch (error) {
+    return { data: [], total: 0, offset: 0, limit: 12, totalPages: 0 };
+  }
+};
+

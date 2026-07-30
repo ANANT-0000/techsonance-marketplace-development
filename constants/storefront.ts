@@ -20,13 +20,13 @@ export const getWelcomeDescription = (storeName: string) =>
   `Welcome to ${storeName}. Discover a curated selection of premium products, handcrafted items, and exclusive deals.`;
 export const BRAND_HIGHLIGHT_DEFAULT = {
   eyebrow: "Our Promise",
-  title: "Precision Engineered for Pure Sound",
-  desc: "Every product on our platform is hand-selected for build quality, acoustic performance, and long-term reliability. We partner only with brands that share our obsession with detail.",
+  title: "Uncompromising Quality & Curation",
+  desc: "Every product on our platform is hand-selected for build quality and long-term reliability. We partner only with brands that share our obsession with detail.",
   btn_text: "Shop the Collection",
   stats: [
-    { value: "500+", label: "Products" },
-    { value: "50K+", label: "Happy Customers" },
-    { value: "4.9★", label: "Avg. Rating" },
+    { value: "100%", label: "Authentic" },
+    { value: "Premium", label: "Quality" },
+    { value: "Curated", label: "Selection" },
   ],
 };
 export const CATEGORY_CART_TEXT = {
@@ -201,7 +201,7 @@ export const COLOR_SLATE_DARK = "#0f172a";
 
 export const CMS_L1_NAV_PAYLOAD: L1NavbarPayload = {
   logo: {
-    src: "/assets/e-commerce_brand_logo.png",
+    src: "",
     alt: "Techsonance Store logo",
     href: "/",
     alignment: NavMenuLogoAlignment.LEFT,
@@ -229,20 +229,7 @@ export const CMS_L1_NAV_PAYLOAD: L1NavbarPayload = {
       itemType: "category",
       hasMegaMenu: false,
     },
-    {
-      id: "categories",
-      label: "Categories",
-      href: "/store?type=categories",
-      itemType: "category",
-      hasMegaMenu: true,
-    },
-    {
-      id: "new-arrivals",
-      label: "New Launches",
-      href: "/store?filter=new",
-      itemType: "category",
-      hasMegaMenu: false,
-    },
+
     {
       id: "support",
       label: "Help & Support",

@@ -193,7 +193,11 @@ function CustomerLoginFormContent({
               router.push("/customer/cart");
               return;
             }
-          } catch (syncErr) {}
+          } catch (syncErr) {
+            toast.error(
+              "There was an issue syncing your cart. Please try again.",
+            );
+          }
         }
 
         // --- QUICK_BUY intent: redirect target is already a checkout URL ---
@@ -294,16 +298,16 @@ function CustomerLoginFormContent({
   };
 
   const handleCreateAccountClick = () => {
-    console.log("lcice");
+ 
     if (isModal && onToggleRegister) {
-      console.log("lcicwewews e");
+   
 
       onToggleRegister();
     } else {
       if (isModal) {
         dispatch(closeLoginModal());
       }
-      console.log("l111111cice");
+ 
 
       router.replace(CUSTOMER_REGISTER_PATH);
     }
@@ -378,7 +382,7 @@ function CustomerLoginFormContent({
         type="button"
         onClick={handleGoogleLogin}
         disabled={state.isGoogleLoading || isSubmitting || state.cookiesBlocked}
-        className={`${state.isGoogleLoading || isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-50 border-slate-300 hover:border-slate-400"} w-full flex items-center justify-center gap-3 border-2 text-slate-700 py-2.5 rounded-xl font-semibold transition-all duration-200 shadow-xs mb-5 cursor-pointer text-theme-body-sm`}
+        className={`${state.isGoogleLoading || isSubmitting ? "opacity-50 cursor-not-allowed" : "hover:bg-slate-50 border-slate-300 hover:border-slate-400 hover:scale-[1.01] active:scale-[0.99] hover:shadow-md"} w-full flex items-center justify-center gap-3 border-2 text-slate-700 py-3 rounded-xl font-semibold transition-all duration-250 shadow-sm mb-5 cursor-pointer text-theme-body-sm`}
       >
         <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
           <path
@@ -429,10 +433,10 @@ function CustomerLoginFormContent({
             {...register("email")}
             type="email"
             placeholder={CUSTOMER_LOGIN_TEXT.PH_EMAIL}
-            className={`border-2 rounded-lg py-2 px-3 text-theme-body-sm focus:outline-none focus:ring-2 transition-all ${
+            className={`border-2 rounded-xl py-2.5 px-4 text-theme-body-sm focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all duration-200 ${
               errors.email
                 ? "border-red-400 focus:ring-red-100 bg-red-50"
-                : "border-slate-200 focus:ring-theme-primary/20 focus:border-theme-primary"
+                : "border-slate-200 focus:ring-theme-primary/30 focus:border-theme-primary hover:border-slate-300"
             }`}
             disabled={isSubmitting || state.isGoogleLoading}
           />
@@ -477,10 +481,10 @@ function CustomerLoginFormContent({
               {...register("password")}
               type={state.showPassword ? "text" : "password"}
               placeholder={CUSTOMER_LOGIN_TEXT.PH_PASS}
-              className={`w-full border-2 rounded-lg pl-3 pr-9 py-2 text-theme-body-sm focus:outline-none focus:ring-2 transition-all ${
+              className={`w-full border-2 rounded-xl pl-4 pr-10 py-2.5 text-theme-body-sm focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all duration-200 ${
                 errors.password
                   ? "border-red-400 focus:ring-red-100 bg-red-50"
-                  : "border-slate-200 focus:ring-theme-primary/20 focus:border-theme-primary"
+                  : "border-slate-200 focus:ring-theme-primary/30 focus:border-theme-primary hover:border-slate-300"
               }`}
               disabled={isSubmitting || state.isGoogleLoading}
             />
@@ -522,7 +526,7 @@ function CustomerLoginFormContent({
           disabled={
             isSubmitting || state.isGoogleLoading || state.cookiesBlocked
           }
-          className="w-full font-bold py-2.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md disabled:shadow-none bg-theme-primary text-theme-primary-foreground hover:bg-theme-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-5 cursor-pointer text-theme-body-sm"
+          className="w-full font-bold py-3 rounded-xl transition-all duration-250 shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] disabled:scale-100 disabled:shadow-none bg-theme-primary text-theme-primary-foreground hover:bg-theme-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6 cursor-pointer text-theme-body-sm"
         >
           {isSubmitting ? (
             <>

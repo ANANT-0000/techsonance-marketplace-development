@@ -121,7 +121,7 @@ function hydrateRule(raw: {
 // ─── Shared field styles ──────────────────────────────────────────────────────
 
 const fieldBase =
-  'w-full border border-gray-200 rounded-xl p-2.5 text-theme-body-sm bg-white outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 transition-all placeholder:text-gray-400';
+  'w-full border border-gray-200/80 rounded-xl p-3 text-theme-body-sm bg-white outline-none focus:ring-[3px] focus:ring-blue-100/50 focus:border-blue-400 hover:border-gray-300 transition-all duration-200 placeholder:text-gray-400 shadow-sm';
 const fieldError = 'border-red-400 focus:ring-red-100 focus:border-red-400';
 const labelBase = 'block text-theme-caption font-semibold text-gray-600 mb-1.5';
 const sectionTitle = 'text-theme-body-sm font-bold text-gray-800';
@@ -398,10 +398,10 @@ reset();
   const applicableProductIds = watch('applicable_product_ids') ?? [];
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all duration-300">
       <div
         ref={modalRef}
-        className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden"
+        className="bg-white w-full max-w-2xl rounded-[24px] shadow-2xl overflow-hidden ring-1 ring-black/5"
       >
         {/* ── Modal header ── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50">

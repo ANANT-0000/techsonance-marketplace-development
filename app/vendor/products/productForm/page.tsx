@@ -58,7 +58,15 @@ const getTaxSlabsOptions = async (
     .catch((error) => {});
 };
 export default function ProductFormPage() {
-  const companyId = getClientCompanyId();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setCompanyId(getClientCompanyId());
+    setToken(authToken());
+    setIsMounted(true);
+  }, []);
 
   const { user } = useAppSelector((state) => state.auth);
   const vendorId = (user && "vendor_id" in user ? user.vendor_id : "") ?? "";
@@ -71,18 +79,22 @@ export default function ProductFormPage() {
   const [taxSlabsOptions, setTaxSlabsOptions] = useState<
     { value: string; label: string }[]
   >([]);
-  const token = authToken();
+  useEffect(() => {
+    if (token && companyId) {
+      getWarehouseOptions(token, companyId, setWarehouseOptions);
+      getCategoryOptions(token, companyId, setCategoryOptions);
+      getTaxSlabsOptions(token, companyId, setTaxSlabsOptions);
+    }
+  }, [token, companyId]);
+
+  if (!isMounted) return null;
+
   if (!token || !companyId) {
     return <SessionErrorCard />;
   }
 
-  useEffect(() => {
-    getWarehouseOptions(token, companyId, setWarehouseOptions);
-    getCategoryOptions(token, companyId, setCategoryOptions);
-    getTaxSlabsOptions(token, companyId, setTaxSlabsOptions);
-  }, [token, companyId]);
   return (
-    <main className="w-full px-4 sm:px-8 py-1 min-h-screen max-h-screen overflow-y-scroll bg-[#fafafa]">
+    <main className="flex-1 w-full h-full overflow-y-auto px-4 sm:px-8 py-1 bg-[#fafafa]">
       <div className="mx-auto space-y-6 pt-4 pb-12">
         <ProductForm
           categoryOptions={categoryOptions}

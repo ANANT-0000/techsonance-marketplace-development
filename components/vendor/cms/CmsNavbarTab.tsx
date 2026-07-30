@@ -17,10 +17,11 @@ import {
   Grid3X3,
   MousePointerClick,
   Info,
-  AlertTriangle,
   CheckCircle2,
   Search,
+  AlertTriangle,
 } from "lucide-react";
+import { SessionErrorCard } from "../SessionErrorCard";
 import { CmsSection } from "./Section";
 import { InputField } from "./InputField";
 import { SelectField } from "./SelectField";
@@ -35,6 +36,9 @@ import {
   CreateNavItemPayload,
   NavItemMetaPayload,
   fetchVendorActiveProducts,
+  fetchNavbarTemplates,
+  fetchProductFilters,
+  copyProductFilter,
 } from "@/utils/vendorApiClient";
 import { authToken } from "@/utils/authToken";
 import { dispatchNavbarChange } from "@/utils/cache";
@@ -46,8 +50,12 @@ import {
   NavMenuPosition,
   SiteMap,
   NavLayoutType,
+  AnnouncementItem,
 } from "@/utils/Types";
+import { PageType } from "@/app/vendor/cms/page";
 import { CmsNavbarConfig } from "@/constants";
+import { ANNOUNCEMENT_FEATURES } from "@/components/customer/features/AnnouncementFeatureRegistry";
+import { NavbarPreview } from "./NavbarPreview";
 
 interface L2Column {
   id: string;
@@ -70,8 +78,23 @@ interface L1Item {
   meta: NavItemMetaPayload;
   megaMenuColumns: L2Column[];
   layout_type?: NavLayoutType;
+  nav_item_id?: string | null;
+  slug?: string | null;
+  config?: any;
   target_route?: string | null;
   root_category_id?: string | null;
+}
+
+export interface NavbarTemplate {
+  id: string;
+  key: string;
+  label: string;
+  base_path: string;
+}
+
+export interface ProductFilter {
+  id: string;
+  name: string;
 }
 
 interface NavbarData {
@@ -94,7 +117,7 @@ const LAYOUT_OPTIONS = [
     label: "Simple Link",
     description: "A plain navigation link. Optionally add a mega-menu below.",
     color: "border-gray-200 bg-white",
-    activeColor: "border-purple-500 bg-purple-50 text-purple-900",
+    activeColor: "border-slate-900 bg-slate-50 text-slate-900",
   },
   {
     value: NavLayoutType.DIRECTORY,
@@ -103,7 +126,7 @@ const LAYOUT_OPTIONS = [
     description:
       "Auto-generates a full category tree from your selected root category.",
     color: "border-gray-200 bg-white",
-    activeColor: "border-indigo-500 bg-indigo-50 text-indigo-900",
+    activeColor: "border-indigo-500 bg-slate-50 text-indigo-900",
   },
   {
     value: NavLayoutType.GRID,
@@ -155,7 +178,7 @@ function Toggle({
         type="button"
         onClick={() => onChange(!value)}
         className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
-          value ? "bg-purple-500" : "bg-gray-200"
+          value ? "bg-slate-500" : "bg-gray-200"
         }`}
       >
         <span
@@ -181,7 +204,7 @@ function SaveBtn({
     <button
       onClick={onClick}
       disabled={saving}
-      className="flex items-center gap-1.5 px-4 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+      className="flex items-center gap-1.5 px-4 py-1.5 bg-slate-900 hover:bg-black disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
     >
       <Save className="w-3.5 h-3.5" />
       {saving ? "Saving…" : label}
@@ -412,6 +435,8 @@ function l2ColumnReducer(
 function L2ColumnEditor({
   col,
   categories: rawCategories,
+  templates: rawTemplates,
+  filters: rawFilters,
   products: rawProducts,
   menuId,
   token,
@@ -421,6 +446,8 @@ function L2ColumnEditor({
 }: {
   col: L2Column;
   categories: CatOption[];
+  templates: NavbarTemplate[];
+  filters: ProductFilter[];
   products: { id: string; name: string }[];
   menuId: string;
   token: string;
@@ -428,8 +455,10 @@ function L2ColumnEditor({
   onSaved: (updated: L2Column) => void;
   onDeleted: (id: string) => void;
 }) {
-  const categories = Array.isArray(rawCategories) ? rawCategories : [];
-  const products = Array.isArray(rawProducts) ? rawProducts : [];
+  const categories = rawCategories || [];
+  const templates = rawTemplates || [];
+  const filters = rawFilters || [];
+  const products = rawProducts || [];
   const [state, dispatch] = useReducer(l2ColumnReducer, {
     draft: { ...col, meta: col.meta || {} },
     saving: false,
@@ -458,13 +487,8 @@ function L2ColumnEditor({
         col.id,
         {
           label: draft.label,
-          href: draft.href,
           sort_order: draft.sort_order,
           meta: draft.meta,
-          category_id: draft.category_id || undefined,
-          item_type: draft.category_id
-            ? NavItemType.CATEGORY
-            : NavItemType.CUSTOM_LINK,
         },
         token,
         companyId,
@@ -520,7 +544,7 @@ function L2ColumnEditor({
         <span className="flex-1 text-xs font-semibold text-gray-700 truncate">
           {draft.label || "Unnamed Column"}
         </span>
-        <span className="text-[10px] bg-purple-100 text-purple-600 font-bold px-2 py-0.5 rounded-full uppercase shrink-0">
+        <span className="text-[10px] bg-slate-100 text-slate-900 font-bold px-2 py-0.5 rounded-full uppercase shrink-0">
           {colTypeLabel}
         </span>
         <button
@@ -720,7 +744,8 @@ function l1ItemReducer(state: L1ItemState, action: L1ItemAction): L1ItemState {
 function L1ItemEditor({
   item,
   categories: rawCategories,
-  siteMaps: rawSiteMaps,
+  templates: rawTemplates,
+  filters: rawFilters,
   mapsLoading,
   products: rawProducts,
   menuId,
@@ -731,7 +756,8 @@ function L1ItemEditor({
 }: {
   item: L1Item;
   categories: CatOption[];
-  siteMaps: SiteMap[];
+  templates: NavbarTemplate[];
+  filters: ProductFilter[];
   mapsLoading: boolean;
   products: { id: string; name: string }[];
   menuId: string;
@@ -741,7 +767,8 @@ function L1ItemEditor({
   onDeleted: (id: string) => void;
 }) {
   const categories = Array.isArray(rawCategories) ? rawCategories : [];
-  const siteMaps = Array.isArray(rawSiteMaps) ? rawSiteMaps : [];
+  const templates = Array.isArray(rawTemplates) ? rawTemplates : [];
+  const filters = Array.isArray(rawFilters) ? rawFilters : [];
   const products = Array.isArray(rawProducts) ? rawProducts : [];
   const [state, dispatch] = useReducer(l1ItemReducer, {
     draft: {
@@ -751,8 +778,8 @@ function L1ItemEditor({
       layout_type: item.layout_type || NavLayoutType.NONE,
       target_route:
         item.target_route ||
-        siteMaps.find((r) => r.key === "store")?.key ||
-        siteMaps[0]?.key ||
+        templates.find((r) => r.key === "store")?.key ||
+        templates[0]?.key ||
         "",
       root_category_id: item.root_category_id || null,
     },
@@ -765,9 +792,7 @@ function L1ItemEditor({
   const layoutType = (draft.layout_type || NavLayoutType.NONE) as NavLayoutType;
   const isAutoTree = layoutType !== NavLayoutType.NONE;
   const hasMegaMenu = isAutoTree || draft.has_mega_menu;
-  const selectedRoute =
-    siteMaps.find((r) => r.key === draft.target_route) ??
-    siteMaps.find((r) => r.key === "store");
+  const selectedTemplate = templates.find((t) => t.id === draft.nav_item_id);
 
   const patch = (field: keyof L1Item, val: any) =>
     dispatch({
@@ -782,22 +807,41 @@ function L1ItemEditor({
       const layoutTypeVal = layoutType;
       const hasMegaMenuVal = isAutoTree ? true : draft.has_mega_menu;
       const targetRouteVal =
-        draft.target_route || selectedRoute?.key || "store";
-      const resolvedHref = selectedRoute?.base_path || "/";
+        draft.target_route || selectedTemplate?.key || "store";
+
+      let finalConfig = draft.config;
+      if (selectedTemplate?.key === NavTemplateKey.FILTERED_COLLECTION && finalConfig?.filter_id) {
+        try {
+          const copyRes = await copyProductFilter(finalConfig.filter_id, token, companyId);
+          if (copyRes?.success && copyRes?.data?.id) {
+            finalConfig = { ...finalConfig, filter_id: copyRes.data.id };
+          }
+        } catch {
+          // ignore error and proceed
+        }
+      }
+
+      const finalSlug =
+        draft.slug ||
+        (selectedTemplate?.key === NavTemplateKey.FILTERED_COLLECTION
+          ? draft.label
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "")
+          : undefined);
 
       const res = await updateNavbarItem(
         item.id,
         {
           label: draft.label,
-          href: resolvedHref,
-          item_type: NavItemType.CUSTOM_LINK,
-          category_id: undefined,
+          nav_item_id: draft.nav_item_id || item.nav_item_id || null,
+          slug: finalSlug,
+          config: finalConfig,
           has_mega_menu: hasMegaMenuVal,
           layout_type: layoutTypeVal,
           root_category_id: isAutoTree
             ? (draft.root_category_id ?? null)
             : null,
-          target_route: targetRouteVal,
           sort_order: draft.sort_order,
           meta: (() => {
             const { route_key, ...rest } = draft.meta || {};
@@ -817,6 +861,9 @@ function L1ItemEditor({
       toast.success(CmsNavbarConfig.SUCCESS_SAVE_LINK);
       onSaved({
         ...draft,
+        nav_item_id: draft.nav_item_id || item.nav_item_id || null,
+        slug: finalSlug,
+        config: finalConfig,
         has_mega_menu: hasMegaMenuVal,
         layout_type: layoutTypeVal,
         root_category_id: draft.root_category_id || null,
@@ -842,8 +889,7 @@ function L1ItemEditor({
         menu_id: menuId,
         parent_id: item.id,
         label: "New Column",
-        href: selectedRoute?.base_path ?? "/",
-        item_type: NavItemType.CUSTOM_LINK,
+        nav_item_id: "",
         has_mega_menu: false,
         sort_order: draft.megaMenuColumns.length,
         meta: {
@@ -998,14 +1044,34 @@ function L1ItemEditor({
               </div>
             ) : (
               <SelectField
-                label="Destination"
-                value={draft.target_route || ""}
-                onChange={(v: string) => patch("target_route", v)}
-                options={siteMaps.map((route) => ({
-                  value: route.key,
+                label="Template"
+                value={draft.nav_item_id || ""}
+                onChange={(v: string) => patch("nav_item_id", v)}
+                options={templates.map((route) => ({
+                  value: route.id,
                   label: route.label,
                 }))}
               />
+            )}
+            
+            {templates.find(t => t.id === draft.nav_item_id)?.key === NavTemplateKey.FILTERED_COLLECTION && (
+              <div className="mt-4 space-y-4">
+                <InputField
+                  label="URL Slug"
+                  value={draft.slug || ""}
+                  onChange={(v: string) => patch("slug", v)}
+                  placeholder="e.g. summer-sale"
+                />
+                <SelectField
+                  label="Product Filter"
+                  value={draft.config?.filter_id || ""}
+                  onChange={(v: string) => patch("config", { ...draft.config, filter_id: v })}
+                  options={filters.map((f) => ({
+                    value: f.id,
+                    label: f.name,
+                  }))}
+                />
+              </div>
             )}
           </div>
 
@@ -1081,7 +1147,7 @@ function L1ItemEditor({
 
           {/* ── Step 4b: Mega-menu toggle (NONE layout only) ── */}
           {!isAutoTree && (
-            <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+            <div className="rounded-xl border border-indigo-100 bg-slate-50 px-4 py-3">
               <Toggle
                 label="Enable Mega-Menu Panel"
                 description="Adds a dropdown panel with curated columns below this link."
@@ -1130,6 +1196,8 @@ function L1ItemEditor({
                   key={col.id}
                   col={col}
                   categories={categories}
+                  templates={templates}
+                  filters={filters}
                   menuId={menuId}
                   token={token}
                   companyId={companyId}
@@ -1155,7 +1223,8 @@ interface CmsNavbarState {
   items: L1Item[];
   addingItem: boolean;
   categories: CatOption[];
-  siteMaps: SiteMap[];
+  templates: NavbarTemplate[];
+  filters: ProductFilter[];
   mapsLoading: boolean;
 }
 
@@ -1170,7 +1239,8 @@ const initialState: CmsNavbarState = {
   items: [],
   addingItem: false,
   categories: [],
-  siteMaps: [],
+  templates: [],
+  filters: [],
   mapsLoading: true,
 };
 
@@ -1221,7 +1291,8 @@ function reducer(state: CmsNavbarState, action: NavbarAction): CmsNavbarState {
         items: action.payload.items,
         categories: action.payload.categories,
         products: action.payload.products,
-        siteMaps: action.payload.siteMaps,
+        templates: action.payload.templates,
+        filters: action.payload.filters,
       };
     case ActionType.PATCH_SETTINGS:
       return {
@@ -1254,25 +1325,209 @@ function reducer(state: CmsNavbarState, action: NavbarAction): CmsNavbarState {
   }
 }
 
-export function CmsNavbarTab() {
+interface AnnouncementItemBuilderProps {
+  title: string;
+  items: AnnouncementItem[];
+  siteMaps: SiteMap[];
+  onChange: (items: AnnouncementItem[]) => void;
+}
+
+function AnnouncementItemBuilder({
+  title,
+  items,
+  siteMaps,
+  onChange,
+}: AnnouncementItemBuilderProps) {
+  const addItem = () => {
+    const newItem: AnnouncementItem = {
+      id: Math.random().toString(36).substring(2, 11),
+      type: "text",
+      label: "New Item",
+      visible_on: ["desktop", "mobile"],
+      is_highlighted: false,
+    };
+    onChange([...items, newItem]);
+  };
+  const updateItem = <K extends keyof AnnouncementItem>(
+    id: string,
+    key: K,
+    val: AnnouncementItem[K] | boolean,
+  ) => {
+    onChange(items.map((i) => (i.id === id ? { ...i, [key]: val } : i)));
+  };
+  const removeItem = (id: string) => {
+    onChange(items.filter((i) => i.id !== id));
+  };
+
+  const toggleVisibility = (id: string, device: "desktop" | "mobile") => {
+    onChange(
+      items.map((i) => {
+        if (i.id !== id) return i;
+        const current = i.visible_on || ["desktop", "mobile"];
+        const updated = current.includes(device)
+          ? current.filter((d) => d !== device)
+          : [...current, device];
+        // Prevent unchecking both (require at least one)
+        return { ...i, visible_on: updated.length === 0 ? [device] : updated };
+      }),
+    );
+  };
+
+  return (
+    <div className="space-y-2 border border-slate-200 rounded-lg p-3 bg-slate-50/50">
+      <div className="flex justify-between items-center mb-2">
+        <label className="text-xs font-semibold text-slate-700">{title}</label>
+        <button
+          type="button"
+          onClick={addItem}
+          className="text-xs text-theme-primary hover:underline flex items-center gap-1"
+        >
+          <Plus size={12} /> Add
+        </button>
+      </div>
+      {items.map((item, idx: number) => (
+        <div
+          key={item.id}
+          className="flex flex-col gap-2 p-2 border border-slate-200 rounded bg-white"
+        >
+          <div className="flex items-center gap-2">
+            <select
+              value={item.type}
+              onChange={(e) => updateItem(item.id, "type", e.target.value as AnnouncementItem["type"])}
+              className="text-xs border border-slate-200 rounded p-1"
+            >
+              <option value="text">Text</option>
+              <option value="link">Link</option>
+              <option value="feature">Interactive Feature</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Label"
+              value={item.label}
+              onChange={(e) => updateItem(item.id, "label", e.target.value)}
+              className="flex-1 text-xs border border-slate-200 rounded p-1"
+            />
+            <button
+              onClick={() => removeItem(item.id)}
+              className="text-red-500 hover:text-red-700"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+          {item.type === "link" && (
+            <select
+              value={item.target_route || ""}
+              onChange={(e) =>
+                updateItem(item.id, "target_route", e.target.value)
+              }
+              className="text-xs border border-slate-200 rounded p-1 w-full"
+            >
+              <option value="">-- Select Route --</option>
+              {siteMaps.map((sm) => (
+                <option key={sm.key} value={sm.key}>
+                  {sm.label} ({sm.base_path})
+                </option>
+              ))}
+            </select>
+          )}
+          {item.type === "feature" && (
+            <select
+              value={item.feature_key || ""}
+              onChange={(e) =>
+                updateItem(item.id, "feature_key", e.target.value)
+              }
+              className="text-xs border border-slate-200 rounded p-1 w-full"
+            >
+              <option value="">-- Select Feature --</option>
+              {ANNOUNCEMENT_FEATURES.map((feat) => (
+                <option key={feat.key} value={feat.key}>
+                  {feat.name}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-1">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={(item.visible_on || ["desktop", "mobile"]).includes(
+                    "desktop",
+                  )}
+                  onChange={() => toggleVisibility(item.id, "desktop")}
+                  className="rounded text-theme-primary focus:ring-theme-primary/20"
+                />
+                Show on Desktop
+              </label>
+              <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={(item.visible_on || ["desktop", "mobile"]).includes(
+                    "mobile",
+                  )}
+                  onChange={() => toggleVisibility(item.id, "mobile")}
+                  className="rounded text-theme-primary focus:ring-theme-primary/20"
+                />
+                Show on Mobile
+              </label>
+            </div>
+
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={item.is_highlighted || false}
+                onChange={(e) =>
+                  updateItem(item.id, "is_highlighted", e.target.checked)
+                }
+                className="rounded text-blue-500 focus:ring-blue-500/20"
+              />
+              Highlight
+            </label>
+          </div>
+        </div>
+      ))}
+      {items.length === 0 && (
+        <div className="text-xs text-slate-400">No items added.</div>
+      )}
+    </div>
+  );
+}
+
+export interface CmsNavbarTabProps {
+  registerSave?: (page: PageType, saveFn: () => Promise<void>) => void;
+  registerDiscard?: (page: PageType, discardFn: () => void) => void;
+  setDirty?: (page: PageType, isDirty: boolean) => void;
+}
+
+export function CmsNavbarTab({
+  registerSave,
+  registerDiscard,
+  setDirty,
+}: CmsNavbarTabProps) {
   const companyId = getClientCompanyId();
 
   const token = authToken();
   const [state, dispatch] = useReducer(reducer, initialState);
+  const [sessionError, setSessionError] = useState(false);
 
   // ── Data load ────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!token || !companyId) return;
+    if (!token || !companyId) {
+      setSessionError(true);
+      return;
+    }
     const load = async () => {
       dispatch({ type: ActionType.SET_LOADING, payload: true });
       try {
-        const [navRes, catRes, prodRes, mapsRes] = await Promise.all([
+        const [navRes, catRes, prodRes, tmplRes, filtRes] = await Promise.all([
           AxiosAPI.get("/v1/navbar").catch(() => null),
           AxiosAPI.get("/v1/categories?limit=500").catch(() => null),
           token
             ? fetchVendorActiveProducts(token, companyId).catch(() => null)
             : Promise.resolve(null),
-          AxiosAPI.get("/v1/site-maps").catch(() => null),
+          fetchNavbarTemplates(token).catch(() => null),
+          fetchProductFilters(token, companyId).catch(() => null),
         ]);
 
         const d: NavbarData | null = navRes?.data?.data ?? navRes?.data ?? null;
@@ -1289,10 +1544,15 @@ export function CmsNavbarTab() {
             ? prodRes.data
             : [];
         const prods = prodList.map((p: any) => ({ id: p.id, name: p.name }));
-        const sMaps: SiteMap[] = Array.isArray(mapsRes?.data?.data)
-          ? mapsRes.data.data
-          : Array.isArray(mapsRes?.data)
-            ? mapsRes.data
+        const tmpls = Array.isArray(tmplRes?.data?.data)
+          ? tmplRes.data.data
+          : Array.isArray(tmplRes?.data)
+            ? tmplRes.data
+            : [];
+        const filts = Array.isArray(filtRes?.data?.data)
+          ? filtRes.data.data
+          : Array.isArray(filtRes?.data)
+            ? filtRes.data
             : [];
 
         dispatch({
@@ -1303,7 +1563,8 @@ export function CmsNavbarTab() {
             items: itms,
             categories: cats,
             products: prods,
-            siteMaps: sMaps,
+            templates: tmpls,
+            filters: filts,
           },
         });
       } catch {
@@ -1325,32 +1586,32 @@ export function CmsNavbarTab() {
 
   // ── Save scalar settings ────────────────────────────────────────────────────
   const saveSettings = async () => {
-    if (!token || !companyId) return;
-    dispatch({ type: ActionType.SET_SAVING_SETTINGS, payload: true });
-    try {
-      const res = await upsertNavbarMenu(state.settings, token, companyId);
-      dispatch({
-        type: ActionType.SET_SAVING_SETTINGS,
-        payload: false,
-      });
-      if (res?.success === false) {
-        toast.error(res?.message || CmsNavbarConfig.ERROR_SAVE_SETTINGS);
-
-        return;
-      }
-      toast.success(CmsNavbarConfig.SUCCESS_SAVE_SETTINGS);
-      dispatchNavbarChange();
-    } catch (err) {
-      dispatch({
-        type: ActionType.SET_SAVING_SETTINGS,
-        payload: false,
-      });
-      toast.error(CmsNavbarConfig.ERROR_SAVE_SETTINGS);
+    if (!token || !companyId) throw new Error("No session");
+    const res = await upsertNavbarMenu(state.settings, token, companyId);
+    if (res?.success === false) {
+      throw new Error(res?.message || "Failed to save settings");
     }
+    dispatchNavbarChange();
+    setDirty?.(PageType.NAVBAR, false);
   };
 
+  useEffect(() => {
+    if (registerSave) registerSave(PageType.NAVBAR, saveSettings);
+    if (registerDiscard) {
+      registerDiscard(PageType.NAVBAR, () => {
+        // Discard is simple: just re-trigger load effect by resetting data
+        // For now, we can just reload the window if we don't want to re-fetch manually
+        window.location.reload();
+      });
+    }
+  }, [registerSave, registerDiscard, saveSettings]);
+
   const makeAutoSave = async (newUrl: string) => {
-    if (!token || !companyId) return;
+    if (!token || !companyId) {
+      setSessionError(true);
+      return;
+    }
+    setDirty?.(PageType.NAVBAR, true);
     const updatedSettings = { ...state.settings, logo_src: newUrl };
     dispatch({
       type: ActionType.PATCH_SETTINGS,
@@ -1368,19 +1629,19 @@ export function CmsNavbarTab() {
 
   // ── Add a new L1 item ───────────────────────────────────────────────────────
   const addL1Item = async () => {
-    if (!state.data?.menu_id || !token || !companyId) return;
+    if (!token || !companyId) {
+      setSessionError(true);
+      return;
+    }
+    if (!state.data?.menu_id) return;
     dispatch({ type: ActionType.SET_ADDING_ITEM, payload: true });
     try {
-      const defaultRoute =
-        state.siteMaps.find((r) => r.key === "store") ?? state.siteMaps[0];
       const res = await createNavbarItem(
         {
           menu_id: state.data.menu_id,
           label: "New Link",
-          href: defaultRoute?.base_path || "/",
-          item_type: NavItemType.CUSTOM_LINK,
+          nav_item_id: state.templates[0]?.id || "",
           has_mega_menu: false,
-          target_route: defaultRoute?.key || "store",
           sort_order: state.items.length,
           meta: {},
         },
@@ -1411,6 +1672,10 @@ export function CmsNavbarTab() {
   };
 
   // ─── Loading skeleton ───────────────────────────────────────────────────────
+  if (sessionError) {
+    return <SessionErrorCard />;
+  }
+
   if (state.loading) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -1504,7 +1769,123 @@ export function CmsNavbarTab() {
         )}
       </CmsSection>
 
-      {/* ── Section 4: Utility Icons ── */}
+      {/* ── 4. Announcement Bar ─────────────────────────────────────────────── */}
+      <CmsSection title="Announcement Bar (Top)">
+        <Toggle
+          label="Show announcement bar"
+          value={state.settings.announcement_visible ?? false}
+          onChange={(v) => patchSettings("announcement_visible", v)}
+        />
+        {state.settings.announcement_visible && (
+          <div className="pt-3 space-y-6">
+            <NavbarPreview
+              itemsLeft={state.settings.announcement_items_left || []}
+              itemsRight={state.settings.announcement_items_right || []}
+              bgColor={state.settings.announcement_bg_color || "#f8f9fa"}
+              textColor={state.settings.announcement_text_color || "#475569"}
+              textSize={state.settings.announcement_text_size}
+              mobileAlignment={state.settings.announcement_mobile_alignment}
+            />
+            <AnnouncementItemBuilder
+              title="Left Items"
+              items={state.settings.announcement_items_left || []}
+              siteMaps={state.siteMaps}
+              onChange={(items: any) =>
+                patchSettings("announcement_items_left", items)
+              }
+            />
+            <AnnouncementItemBuilder
+              title="Right Items"
+              items={state.settings.announcement_items_right || []}
+              siteMaps={state.siteMaps}
+              onChange={(items: any) =>
+                patchSettings("announcement_items_right", items)
+              }
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Background Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={state.settings.announcement_bg_color || "#f8f9fa"}
+                    onChange={(e) =>
+                      patchSettings("announcement_bg_color", e.target.value)
+                    }
+                    className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                  />
+                  <input
+                    type="text"
+                    value={state.settings.announcement_bg_color || "#f8f9fa"}
+                    onChange={(e) =>
+                      patchSettings("announcement_bg_color", e.target.value)
+                    }
+                    className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Text Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={state.settings.announcement_text_color || "#475569"}
+                    onChange={(e) =>
+                      patchSettings("announcement_text_color", e.target.value)
+                    }
+                    className="w-8 h-8 rounded cursor-pointer border-0 p-0"
+                  />
+                  <input
+                    type="text"
+                    value={state.settings.announcement_text_color || "#475569"}
+                    onChange={(e) =>
+                      patchSettings("announcement_text_color", e.target.value)
+                    }
+                    className="flex-1 px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Text Size
+                </label>
+                <select
+                  value={state.settings.announcement_text_size || "text-[11px] sm:text-xs"}
+                  onChange={(e) => patchSettings("announcement_text_size", e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+                >
+                  <option value="text-[10px] sm:text-[11px]">Extra Small</option>
+                  <option value="text-[11px] sm:text-xs">Small (Default)</option>
+                  <option value="text-xs sm:text-sm">Medium</option>
+                  <option value="text-sm sm:text-base">Large</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Mobile Alignment
+                </label>
+                <select
+                  value={state.settings.announcement_mobile_alignment || "center"}
+                  onChange={(e) => patchSettings("announcement_mobile_alignment", e.target.value)}
+                  className="w-full px-3 py-1.5 text-sm border border-slate-200 rounded-lg"
+                >
+                  <option value="left">Left Aligned</option>
+                  <option value="center">Center Aligned (Default)</option>
+                  <option value="right">Right Aligned</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+      </CmsSection>
+
+      {/* ── Section 5: Utility Icons ── */}
       <CmsSection title="Utility Icons (right side)">
         <div className="divide-y divide-gray-100 space-y-1">
           <div className="flex items-center gap-3 py-1">
@@ -1546,7 +1927,7 @@ export function CmsNavbarTab() {
         </div>
       </CmsSection>
 
-      {/* ── 5. Navigation Items (L1) ────────────────────────────────────────── */}
+      {/* ── 6. Navigation Items (L1) ────────────────────────────────────────── */}
       <CmsSection
         title={`Navigation Links (${state.items.length})`}
         action={
@@ -1554,7 +1935,7 @@ export function CmsNavbarTab() {
             <button
               onClick={addL1Item}
               disabled={state.addingItem}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-black disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               {state.addingItem ? "Adding…" : "Add Link"}
@@ -1571,7 +1952,7 @@ export function CmsNavbarTab() {
             <button
               onClick={saveSettings}
               disabled={state.savingSettings}
-              className="mt-3 px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-lg transition-colors"
+              className="mt-3 px-5 py-2 bg-slate-900 hover:bg-black text-white text-xs font-semibold rounded-lg transition-colors"
             >
               {state.savingSettings ? "Saving…" : "Save Settings & Unlock"}
             </button>
@@ -1593,7 +1974,8 @@ export function CmsNavbarTab() {
               key={item.id || idx}
               item={item}
               categories={state.categories}
-              siteMaps={state.siteMaps}
+              templates={state.templates}
+              filters={state.filters}
               mapsLoading={state.mapsLoading}
               menuId={menuId!}
               token={token!}

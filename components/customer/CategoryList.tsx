@@ -43,25 +43,28 @@ export function CategoryList({ categories, styles }: { categories?: CategoryList
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-100px" }}
-                className={`px-4 lg:flex lg:flex-nowrap grid grid-cols-2  lg:justify-between justify-evenly gap-6 ${styles}`}
+                className={`px-4 flex flex-wrap justify-center sm:justify-evenly gap-6 sm:gap-8 ${styles}`}
             >
-                {categories && categories.slice(0, 4).map((category, idx) => (
+                {categories && categories.slice(0, 6).map((category, idx) => (
                     <motion.li
                         key={idx}
                         variants={itemVariants}
-                        className="group flex flex-col items-center cursor-pointer"
+                        className="group flex flex-col items-center cursor-pointer max-w-[120px] sm:max-w-[160px]"
                     >
-                        <div className="overflow-hidden rounded-lg shadow-sm group-hover:shadow-xl transition-shadow duration-300">
+                        <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden bg-slate-50 border-[4px] border-white shadow-sm ring-1 ring-slate-100 group-hover:shadow-md transition-shadow duration-300 flex items-center justify-center">
                             <motion.img
                                 whileHover={{ scale: 1.1 }}
                                 transition={{ duration: 0.4 }}
-                                className="lg:w-74 lg:h-86 w-36 h-28 object-cover my-0"
+                                className="w-full h-full object-cover"
                                 src={category.url}
                                 alt={category.title.trim()}
                             />
                         </div>
-                        <span className="mt-4 text-theme-h6 font-medium text-gray-700 group-hover:text-theme-primary transition-colors">
+                        <span className="mt-4 text-sm sm:text-base font-bold text-slate-800 group-hover:text-theme-primary transition-colors text-center">
                             {category.title.trim()}
+                        </span>
+                        <span className="mt-1 text-[10px] sm:text-xs text-slate-400 font-medium">
+                            {category.itemsCount ? `${category.itemsCount}+ Items` : "100+ Items"}
                         </span>
                     </motion.li>
                 ))}

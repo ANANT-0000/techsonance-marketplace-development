@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { SUBSCRIBATION_TEXT } from "@/constants/adminText";
+import { SUBSCRIBATION_TEXT } from "@/constants";
 import { SubscriptionStatus } from "@/utils/Types";
 import { VendorSubscriptionRow, VendorQuotaItem } from "./SharedUI";
 

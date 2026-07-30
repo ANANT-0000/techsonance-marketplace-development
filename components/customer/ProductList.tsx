@@ -7,10 +7,12 @@ import { AddToCart } from "./AddToCart";
 import { BuyBtn } from "./BuyBtn";
 import { WishListBtn } from "./WishListBtn";
 import Link from "next/link";
-import { BuyBtnMode, Product } from "@/utils/Types";
+import { BuyBtnMode } from "@/utils/Types";
+import { StorefrontProduct } from "@/utils/StorefrontTypes";
 import { PRODUCT_LIST_TEXT } from "@/constants/customerText";
+import { resolveDisplayPrice } from "@/lib/utils";
 
-export function ProductList({ products = [], styles }: { products?: Product[], styles?: string }) {
+export function ProductList({ products = [], styles }: { products?: StorefrontProduct[], styles?: string }) {
     const isMobile = useMediaQuery({ maxWidth: 768 });
     const isTablet = useMediaQuery({ minWidth: 769, maxWidth: 1024 });
     const [scope, animate] = useAnimate()
@@ -95,7 +97,8 @@ export function ProductList({ products = [], styles }: { products?: Product[], s
     );
 }
 
-function ProductCard({ product, isMobile }: { product: Product, isMobile: boolean }) {
+function ProductCard({ product, isMobile }: { product: StorefrontProduct, isMobile: boolean }) {
+    const pricing = resolveDisplayPrice(product);
     return (
         <li className="flex flex-col justify-between text-theme-h6 text-gray-700 hover:text-gray-900 cursor-pointer border-2 border-gray-200 rounded-lg p-4 relative  transition-shadow hover:shadow-md"
         >
@@ -119,16 +122,15 @@ function ProductCard({ product, isMobile }: { product: Product, isMobile: boolea
 
             <div className="mt-auto">
                 <div className="flex items-baseline gap-2   flex-wrap">
-                    <span className="font-bold  text-gray-900 lg:text-theme-h5 text-theme-body-sm">₹{product.base_price}</span>
-                    {Number(product.discount_percent) > 0 && (
+                    <span className="font-bold  text-gray-900 lg:text-theme-h5 text-theme-body-sm">₹{pricing.price}</span>
+                    {pricing.hasDiscount && (
                         <>
                             <div className="flex gap-2  ">
-
                                 <span className="text-theme-caption line-through text-gray-400">
-                                    ₹{Math.floor(Number(product.base_price) / (1 - Number(product.discount_percent) / 100))}
+                                    ₹{pricing.mrp}
                                 </span>
                                 <span className="text-theme-caption font-bold text-green-500">
-                                    {Math.round(Number(product.discount_percent))}% {PRODUCT_LIST_TEXT.OFF}
+                                    {pricing.discountPercent}% {PRODUCT_LIST_TEXT.OFF}
                                 </span>
                             </div>
                         </>

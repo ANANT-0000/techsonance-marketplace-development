@@ -1,8 +1,9 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useEffect, useState, useRef, useReducer } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Heart,
   ShoppingBag,
@@ -23,6 +24,10 @@ import { motion, AnimatePresence } from "motion/react";
 import { RootState } from "@/lib/store";
 import { useAppDispatch, useAppSelector } from "@/hooks/reduxHooks";
 import { useThemeData } from "@/hooks/useThemeData";
+import {
+  AnnouncementFeatureRenderer,
+  getDeviceVisibilityClasses,
+} from "./features/AnnouncementFeatureRegistry";
 import { openLoginModal, logOut } from "@/lib/features/auth/authSlice";
 import { toggleCartSidebar } from "@/lib/features/CartSidebar";
 import {
@@ -31,7 +36,6 @@ import {
   NavbarConfig,
   NAVBAR_UI_TEXT,
 } from "@/constants/customerText";
-import { BRAND_LOGO } from "@/constants/common";
 import { useNavbarData } from "@/hooks/useNavbarData";
 import {
   NavItemColType,
@@ -44,6 +48,7 @@ import {
   NavItemDisplayType,
   NavLayoutType,
   L2MegaMenuPayload,
+  AnnouncementItem,
 } from "@/utils/Types";
 
 // UI Text Constants (strictly preventing hardcoded keys/texts in component logic)
@@ -52,6 +57,38 @@ import {
 const MEGA_MENU_ITEM_LIMIT = NavbarConfig.LIMITS.MEGA_MENU_ITEM;
 const MEGA_MENU_SKELETON_COLUMNS = NavbarConfig.LIMITS.SKELETON_COLUMNS;
 const MEGA_MENU_SKELETON_ROWS = NavbarConfig.LIMITS.SKELETON_ROWS;
+
+const renderAnnouncementItem = (item: AnnouncementItem) => {
+  const visibilityClass = getDeviceVisibilityClasses(item.visible_on);
+
+  if (item.type === "link") {
+    return (
+      <Link
+        key={item.id}
+        href={`/${item.target_route || ""}`}
+        className={`hover:opacity-80 transition-opacity ${visibilityClass}`}
+      >
+        {item.label}
+      </Link>
+    );
+  }
+  if (item.type === "feature") {
+    return (
+      <div key={item.id} className={visibilityClass}>
+        <AnnouncementFeatureRenderer
+          featureKey={item.feature_key}
+          label={item.label}
+        />
+      </div>
+    );
+  }
+  // Default text
+  return (
+    <span key={item.id} className={visibilityClass}>
+      {item.label}
+    </span>
+  );
+};
 
 function MegaMenuSkeleton() {
   return (
@@ -201,7 +238,7 @@ function PromoCard({ promo }: { promo: PromotionData }) {
 }
 function NavbarSkeleton() {
   return (
-    <header className="hidden lg:block w-full sticky top-0 bg-white border-b border-slate-100 shadow-sm z-50">
+    <header className="hidden lg:block w-full sticky top-0 bg-white border-b border-slate-100 z-50">
       <nav className="relative flex items-center justify-between xl:px-16 lg:px-8 py-4 w-full">
         {/* Logo skeleton */}
         <div className="flex-shrink-0 flex items-center">
@@ -390,6 +427,8 @@ export function Navbar({
   menuLinks?: { [key: string]: string | null }[];
 }) {
   const path = usePathname();
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get("category");
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { themeData } = useThemeData();
@@ -759,14 +798,75 @@ export function Navbar({
     l1Config && l1Config.navbar.position === NavMenuPosition.STICKY;
   const isLogoLeft =
     l1Config && l1Config.logo.alignment === NavMenuLogoAlignment.LEFT;
+  const [isNavVisible, setIsNavVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const controlNavbar = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsNavVisible(false);
+      } else {
+        setIsNavVisible(true);
+      }
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", controlNavbar, { passive: true });
+    return () => window.removeEventListener("scroll", controlNavbar);
+  }, [lastScrollY]);
+
   if (menuDataLoading) {
     return <NavbarSkeleton />;
   }
 
   return (
-    <header className={`w-full z-50 ${isSticky ? "sticky top-0" : "relative"}`}>
+    <header className={`w-full z-50 transition-transform duration-300 ease-in-out ${isSticky ? "sticky top-0" : "relative"} ${
+      !isNavVisible && isSticky ? "-translate-y-full" : "translate-y-0"
+    }`}>
+      {/* ANNOUNCEMENT BAR */}
+      {l1Config?.announcement?.isVisible && (
+        <div
+          className={`w-full font-medium px-4 py-2 flex flex-col sm:flex-row justify-between border-b border-black/5 ${l1Config.announcement.text_size || "text-[11px] sm:text-xs"} ${
+            l1Config.announcement.mobile_alignment === "left"
+              ? "items-start sm:items-center"
+              : l1Config.announcement.mobile_alignment === "right"
+                ? "items-end sm:items-center"
+                : "items-center sm:items-center"
+          }`}
+          style={{
+            backgroundColor: l1Config.announcement.bgColor,
+            color: l1Config.announcement.textColor,
+          }}
+        >
+          <div
+            className={`flex items-center gap-3 mb-1 sm:mb-0 ${
+              l1Config.announcement.mobile_alignment === "left"
+                ? "text-left"
+                : l1Config.announcement.mobile_alignment === "right"
+                  ? "text-right"
+                  : "text-center sm:text-left"
+            }`}
+          >
+            {l1Config.announcement.itemsLeft?.map(renderAnnouncementItem)}
+          </div>
+          <div
+            className={`flex items-center gap-4 ${
+              l1Config.announcement.mobile_alignment === "left"
+                ? "text-left"
+                : l1Config.announcement.mobile_alignment === "right"
+                  ? "text-right"
+                  : "text-center sm:text-right"
+            }`}
+          >
+            {l1Config.announcement.itemsRight?.map(renderAnnouncementItem)}
+          </div>
+        </div>
+      )}
+
       {/* MOBILE HEADER (lg:hidden) */}
-      <div className="lg:hidden block w-full bg-navbar text-navbar-foreground border-b border-border shadow-sm">
+      <div className="lg:hidden block w-full bg-navbar text-navbar-foreground border-b border-border">
         <div className="flex items-center justify-between px-4 py-3 h-[60px] w-full">
           {/* Hamburger Menu Icon */}
           <button
@@ -787,7 +887,7 @@ export function Navbar({
 
           {/* Logo */}
           <div className="flex-1 flex justify-center">
-            {l1Config && (
+            {l1Config && logoUrl && (
               <Link href={l1Config.logo.href}>
                 <img
                   src={logoUrl}
@@ -832,7 +932,8 @@ export function Navbar({
       </div>
 
       {/* MOBILE DRILL-DOWN SIDE DRAWER */}
-      <AnimatePresence>
+      {isMounted && createPortal(
+        <AnimatePresence>
         {isMobileMenuOpen && (
           <div className="lg:hidden fixed inset-0 z-[100] flex">
             {/* Backdrop overlay */}
@@ -873,7 +974,7 @@ export function Navbar({
                     })
                   }
                 >
-                  {l1Config && (
+                  {l1Config && logoUrl && (
                     <img
                       src={logoUrl}
                       alt={l1Config.logo.alt || NAVBAR_UI_TEXT.LOGO_ALT}
@@ -1023,16 +1124,19 @@ export function Navbar({
             </motion.div>
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
 
       {/* DESKTOP HEADER (hidden lg:flex) */}
       <nav
-        className={`hidden lg:flex relative bg-navbar text-navbar-foreground items-center justify-between xl:px-16 lg:px-8 py-3.5 storefront-nav w-full ${styles} ${
-          l1Config && l1Config.navbar.showShadow ? "shadow-md" : "shadow-sm"
-        } ${l1Config && l1Config.navbar.showBottomBorder ? "border-b border-border" : ""}`}
+        className={`hidden lg:flex relative bg-navbar text-navbar-foreground items-center justify-between xl:px-16 lg:px-8  storefront-nav w-full ${styles} ${
+          l1Config && l1Config.navbar.showBottomBorder
+            ? "border-b border-border py-3.5"
+            : "pt-3.5 pb-1.5"
+        }`}
       >
         {/* LOGO (LEFT POSITION) */}
-        {isLogoLeft && (
+        {isLogoLeft && logoUrl && (
           <div className="flex-shrink-0 flex items-center">
             <Link href={l1Config.logo.href}>
               <img
@@ -1053,8 +1157,24 @@ export function Navbar({
         >
           {l1Config &&
             l1Config.navigationItems.map((item) => {
-              const isActive = path === item.href;
+              let isActive = path === item.href;
               const hasMega = item.hasMegaMenu;
+
+              // Disambiguate if multiple items have the same href (e.g. /store)
+              if (isActive && item.href === "/store") {
+                if (categoryParam) {
+                  // If filtering by category, prefer highlighting Categories dropdown
+                  if (!hasMega && !item.label.toLowerCase().includes("categor")) {
+                    isActive = false;
+                  }
+                } else {
+                  // If on main shop page, prefer highlighting Shop
+                  if (hasMega || item.label.toLowerCase().includes("categor")) {
+                    isActive = false;
+                  }
+                }
+              }
+
               const rawColumns = l2Config?.[item.id];
               const columns = Array.isArray(rawColumns) ? rawColumns : [];
               const hasResolvedColumns = columns.length > 0;
@@ -1291,7 +1411,7 @@ export function Navbar({
         {/* LOGO (CENTER POSITION) */}
         {!isLogoLeft && (
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
-            {l1Config && (
+            {l1Config && logoUrl && (
               <Link href={l1Config.logo.href}>
                 <img
                   src={logoUrl}
@@ -1450,7 +1570,8 @@ export function Navbar({
       </nav>
 
       {/* Dimming overlay for menu backdrop */}
-      <AnimatePresence>
+      {isMounted && createPortal(
+        <AnimatePresence>
         {(menuState.status === NavbarState.OPEN ||
           menuState.status === NavbarState.CLOSING) &&
           activeMenuId && (
@@ -1464,7 +1585,8 @@ export function Navbar({
               aria-hidden="true"
             />
           )}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body)}
     </header>
   );
 }

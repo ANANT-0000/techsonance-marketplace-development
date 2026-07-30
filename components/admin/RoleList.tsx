@@ -7,7 +7,7 @@ import {
 } from "@/utils/adminApiClients";
 import { useAppSelector } from "@/hooks/reduxHooks";
 import { RootState } from "@/lib/store";
-import { ROLES_TEXT } from "@/constants/adminText";
+import { ROLES_TEXT } from "@/constants";
 import { Loader2 } from "lucide-react";
 
 export default function RoleList({

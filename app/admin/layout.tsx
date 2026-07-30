@@ -1,7 +1,6 @@
 "use client";
 
 import { Sidebar } from "@/components/common/Sidebar";
-import { ADMIN_NAV_LINKS } from "@/constants/admin";
 // @ts-ignore
 import "./index.css";
 import { useRouter, notFound } from "next/navigation";
@@ -12,6 +11,7 @@ import { useAppSelector } from "@/hooks/reduxHooks";
 import { RootState } from "@/lib/store";
 import { UserRole } from "@/utils/Types";
 import { isAdminDomainAllowed } from "@/lib/get-domain";
+import { ADMIN_NAV_LINKS } from "@/constants";
 
 const ADMIN_LOGIN_PATH = "/auth/adminLogin";
 const ADMIN_BASE_PATH = "/admin";

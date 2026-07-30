@@ -3,7 +3,7 @@
 import { handleAddPermission } from "@/utils/adminApiClients";
 import { Suspense, useState } from "react";
 import { PermissionList } from "./PermissionList";
-import { PERMISSIONS_TEXT } from "@/constants/adminText";
+import { PERMISSIONS_TEXT } from "@/constants";
 import { Loader2 } from "lucide-react";
 
 interface Permission {

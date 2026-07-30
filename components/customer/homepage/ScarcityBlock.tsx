@@ -1,5 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
+import AxiosAPI from "@/lib/axios";
+import { SCARCITY_BLOCK_DEFAULTS } from "@/constants/storefront";
+import { SCARCITY_BLOCK_TEXT } from "@/constants/customerText";
 import Link from "next/link";
 import { Clock, Flame, ArrowRight } from "lucide-react";
 
@@ -12,9 +15,6 @@ export interface ScarcityBlockProps {
   btn_text?: string;
   btn_link?: string;
 }
-
-import { SCARCITY_BLOCK_DEFAULTS } from "@/constants/storefront";
-import { SCARCITY_BLOCK_TEXT } from "@/constants/customerText";
 
 export function ScarcityBlock({
   timer_title,
@@ -78,7 +78,25 @@ export function ScarcityBlock({
 
   const padZero = (num: number) => String(num).padStart(2, "0");
   if (!alert_text || !title || !expires_at || !timeLeft.isExpired) {
-    return null;
+    return (
+      <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-16 xl:px-24 bg-[#faf9f6]">
+        <div className="max-w-screen-xl mx-auto flex flex-col gap-6">
+          <div className="bg-white border border-slate-200 border-dashed rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center gap-4 shadow-sm opacity-60 pointer-events-none text-center">
+            <div className="w-12 h-12 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center shrink-0">
+              <span className="text-xl">✦</span>
+            </div>
+            <div>
+              <h3 className="text-theme-tiny font-black text-slate-400 tracking-[0.25em] uppercase mb-1">
+                {SCARCITY_BLOCK_TEXT.LIMITED_OFFERS}
+              </h3>
+              <p className="text-theme-body-sm text-slate-500 leading-relaxed">
+                {SCARCITY_BLOCK_TEXT.STAY_TUNED}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
   }
   return (
     <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-16 xl:px-24 bg-[#faf9f6]">

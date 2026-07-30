@@ -327,7 +327,6 @@ export default function VendorRegisterClient() {
           }
         }
       } catch (error) {
-        console.error("Failed to fetch subscription state.plans", error);
       } finally {
         dispatch({ type: ActionType.SET_IS_LOADING_PLANS, payload: false });
       }
@@ -938,8 +937,16 @@ export default function VendorRegisterClient() {
                           <input
                             {...register("password")}
                             type={state.showPassword ? "text" : "password"}
-                            onPaste={(e) => e.preventDefault()}
-                            onCopy={(e) => e.preventDefault()}
+                            onPaste={(e) => {
+                              if (process.env.NODE_ENV !== "development") {
+                                e.preventDefault();
+                              }
+                            }}
+                            onCopy={(e) => {
+                              if (process.env.NODE_ENV !== "development") {
+                                e.preventDefault();
+                              }
+                            }}
                             className={`${inputCls} pr-10`}
                             placeholder={
                               VENDOR_REGISTER_TEXT.PASSWORD_PLACEHOLDER
@@ -981,8 +988,16 @@ export default function VendorRegisterClient() {
                             type={
                               state.showConfirmPassword ? "text" : "password"
                             }
-                            onPaste={(e) => e.preventDefault()}
-                            onCopy={(e) => e.preventDefault()}
+                            onPaste={(e) => {
+                              if (process.env.NODE_ENV !== "development") {
+                                e.preventDefault();
+                              }
+                            }}
+                            onCopy={(e) => {
+                              if (process.env.NODE_ENV !== "development") {
+                                e.preventDefault();
+                              }
+                            }}
                             className={`${inputCls} pr-10`}
                             placeholder={
                               VENDOR_REGISTER_TEXT.CONFIRM_PASSWORD_PLACEHOLDER

@@ -316,49 +316,6 @@ export const HOME_BRAND_FEATURES: { title: string; icon: string }[] = [
   },
 ];
 
-export const CATEGORY_LIST: CategoryList[] = [
-  {
-    title: "Guitars",
-    url: "https://m.media-amazon.com/images/I/61KcQyhY6SL._SL1200_.jpg",
-  },
-  {
-    title: "Drums",
-    url: "https://m.media-amazon.com/images/I/71YenZNhuPL._SL1500_.jpg",
-  },
-  {
-    title: "Keyboards",
-    url: "https://m.media-amazon.com/images/I/61En6OhNqNL._SL1200_.jpg",
-  },
-  {
-    title: "Microphones",
-    url: "https://m.media-amazon.com/images/I/61KcQyhY6SL._SL1200_.jpg",
-  },
-  {
-    title: "Headphones",
-    url: "https://m.media-amazon.com/images/I/71YenZNhuPL._SL1500_.jpg",
-  },
-  {
-    title: "Audio Interfaces",
-    url: "https://m.media-amazon.com/images/I/61En6OhNqNL._SL1200_.jpg",
-  },
-  {
-    title: "Studio Monitors",
-    url: "https://m.media-amazon.com/images/I/61KcQyhY6SL._SL1200_.jpg",
-  },
-  {
-    title: "DJ Equipment",
-    url: "https://m.media-amazon.com/images/I/71YenZNhuPL._SL1500_.jpg",
-  },
-];
-
-export const BEST_SELLING_PRODUCTS: BestSellingProductType = {
-  title: "Fender Stratocaster Electric Guitar",
-  url: "https://m.media-amazon.com/images/I/61KcQyhY6SL._SL1200_.jpg",
-  description:
-    "Experience the iconic sound and playability of the Fender Stratocaster Electric Guitar. Perfect for musicians of all levels, this guitar delivers classic tones and exceptional performance. Whether you're a beginner or a seasoned pro, the Stratocaster is your ticket to musical greatness.",
-  satisfaction: "98%  ",
-};
-
 export const FEEDBACK_LIST: Feedback[] = [
   {
     customerName: "John Doe",

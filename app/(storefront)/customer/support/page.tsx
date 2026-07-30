@@ -899,7 +899,7 @@ export default function HelpCenterPage() {
       formData.append("file", file);
 
       const res = await AxiosAPI.post("/v1/cloudinary/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": undefined },
       });
 
       if (res.data?.url) {

@@ -407,9 +407,10 @@ export default function Products() {
                       {/* Category */}
                       <TableCell className="px-5 py-4">
                         <span className="text-sm text-slate-500">
-                          {item.category?.name || (
-                            <span className="text-slate-300">—</span>
-                          )}
+                          {item.categories?.find((c) => c.is_primary)?.name ||
+                            item.categories?.[0]?.name || (
+                              <span className="text-slate-300">—</span>
+                            )}
                         </span>
                       </TableCell>
                       {/* Variant */}

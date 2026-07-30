@@ -91,7 +91,7 @@ export const adminLogin = async (data: {
   password: string;
 }) => {
   try {
-    const response = await AxiosAPI.post(`${ADMIN_AUTH_URL}/login`, {
+    const response = await AxiosAPI.post(`${BASE_API_URL}/v1/admin/login`, {
       email: data.admin_id,
       password: data.password,
     });

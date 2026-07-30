@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SUBSCRIBATION_TEXT } from "@/constants/adminText";
+import { SUBSCRIBATION_TEXT } from "@/constants";
 import { formatDateReadable } from "@/lib/utils";
 import { SubscriptionStatus } from "@/utils/Types";
 import { VendorSubscriptionRow } from "./SharedUI";
@@ -136,15 +136,11 @@ export default function VendorsTab({
               <th className="p-4">
                 {SUBSCRIBATION_TEXT.TABLE_HEADERS.COMPANY_NAME}
               </th>
-              <th className="p-4">
-                {SUBSCRIBATION_TEXT.TABLE_HEADERS.DOMAIN}
-              </th>
+              <th className="p-4">{SUBSCRIBATION_TEXT.TABLE_HEADERS.DOMAIN}</th>
               <th className="p-4">
                 {SUBSCRIBATION_TEXT.TABLE_HEADERS.CURRENT_PLAN}
               </th>
-              <th className="p-4">
-                {SUBSCRIBATION_TEXT.TABLE_HEADERS.STATUS}
-              </th>
+              <th className="p-4">{SUBSCRIBATION_TEXT.TABLE_HEADERS.STATUS}</th>
               <th className="p-4">
                 {SUBSCRIBATION_TEXT.TABLE_HEADERS.TRIAL_ENDS}
               </th>
@@ -193,11 +189,8 @@ export default function VendorsTab({
                     "bg-emerald-50 text-emerald-700 border-emerald-200";
                 } else if (item.status === SubscriptionStatus.TRIAL) {
                   statusStyle = "bg-blue-50 text-blue-700 border-blue-200";
-                } else if (
-                  item.status === SubscriptionStatus.GRACE_PERIOD
-                ) {
-                  statusStyle =
-                    "bg-amber-50 text-amber-700 border-amber-200";
+                } else if (item.status === SubscriptionStatus.GRACE_PERIOD) {
+                  statusStyle = "bg-amber-50 text-amber-700 border-amber-200";
                 } else if (
                   item.status === SubscriptionStatus.EXPIRED ||
                   item.status === SubscriptionStatus.CANCELLED
@@ -213,9 +206,7 @@ export default function VendorsTab({
                     <td className="p-4 font-semibold text-slate-900">
                       {companyName}
                     </td>
-                    <td className="p-4 text-slate-500 font-mono">
-                      {domain}
-                    </td>
+                    <td className="p-4 text-slate-500 font-mono">{domain}</td>
                     <td className="p-4 font-medium capitalize text-slate-800">
                       {planName}
                     </td>
@@ -247,8 +238,7 @@ export default function VendorsTab({
                             type: ACTION.OPEN_EDIT_MODAL,
                             payload: item,
                           });
-                          if (item.company_id)
-                            loadVendorQuota(item.company_id);
+                          if (item.company_id) loadVendorQuota(item.company_id);
                         }}
                         className="h-7 px-2.5 text-xs text-blue-600 border-blue-100 bg-blue-50 hover:bg-blue-100 hover:text-blue-800 rounded-lg transition-colors font-semibold"
                       >

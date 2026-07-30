@@ -6,7 +6,9 @@ import { CmsSection } from "./Section";
 
 import { InputField } from "./InputField";
 import { ImageUploadField } from "./ImageUploadField";
+import { Target, Lightbulb } from "lucide-react";
 import { UILabels } from "@/constants/ui-labels";
+import { UiText } from "@/constants/ui-text";
 export const CmsAboutTab = ({
   data,
   set,
@@ -124,6 +126,16 @@ export const CmsAboutTab = ({
           />
         }
       >
+        
+        {(!data.coreValues || data.coreValues.length === 0) && (
+          <div className="flex flex-col items-center justify-center p-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl text-center">
+            <div className="w-12 h-12 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
+              <Lightbulb size={20} />
+            </div>
+            <h3 className="text-gray-900 font-semibold mb-1">{UiText.NO_CORE_VALUES_TITLE}</h3>
+            <p className="text-sm text-gray-500 max-w-sm">{UiText.NO_CORE_VALUES_DESC}</p>
+          </div>
+        )}
         {(data.coreValues || []).map((v: any) => (
           <ListCard key={v.id} onRemove={() => removeItem("coreValues", v.id)}>
             <InputField
@@ -190,6 +202,16 @@ export const CmsAboutTab = ({
           />
         }
       >
+        
+        {(!data.missionToDeliver || data.missionToDeliver.length === 0) && (
+          <div className="flex flex-col items-center justify-center p-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl text-center">
+            <div className="w-12 h-12 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
+              <Target size={20} />
+            </div>
+            <h3 className="text-gray-900 font-semibold mb-1">{UiText.NO_MISSION_ITEMS_TITLE}</h3>
+            <p className="text-sm text-gray-500 max-w-sm">{UiText.NO_MISSION_ITEMS_DESC}</p>
+          </div>
+        )}
         {(data.missionToDeliver || []).map((m: any) => (
           <ListCard
             key={m.id}

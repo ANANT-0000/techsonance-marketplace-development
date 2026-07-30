@@ -27,7 +27,9 @@ interface Product {
   description: string;
   features: ProductFeature[];
   base_price: string;
-  discount_percent: string;
+  compare_at_price: string | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   stock_quantity: number;
   status: "active" | "inactive" | string;
   created_at: string; // ISO date string
@@ -61,6 +63,9 @@ interface ProductVariantResponseType {
   created_at: string;
   updated_at: string;
   product_id: string;
+  compare_at_price?: string | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   product: Product;
   inventory?: {
     stock_quantity: number;
@@ -106,7 +111,15 @@ const getWarehouseOptions = async ({
 import { useAppSelector } from "@/hooks/reduxHooks";
 
 export default function ProductVariantFormPage() {
-  const companyId = getClientCompanyId();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setCompanyId(getClientCompanyId());
+    setToken(authToken());
+    setIsMounted(true);
+  }, []);
 
   const { variantId } = useParams<{ variantId: string }>();
   const { user } = useAppSelector((state) => state.auth);
@@ -116,7 +129,15 @@ export default function ProductVariantFormPage() {
   const [warehouseOptions, setWarehouseOptions] = useState<
     { value: string; label: string }[]
   >([]);
-  const token = authToken();
+  useEffect(() => {
+    if (token && companyId) {
+      getExistVariant(variantId, setExistVariant, token, companyId);
+      getWarehouseOptions({ setWarehouseOptions, token, companyId });
+    }
+  }, [token, companyId, variantId]);
+
+  if (!isMounted) return null;
+
   if (!token || !companyId) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50/30">
@@ -124,10 +145,6 @@ export default function ProductVariantFormPage() {
       </div>
     );
   }
-  useEffect(() => {
-    getExistVariant(variantId, setExistVariant, token, companyId);
-    getWarehouseOptions({ setWarehouseOptions, token, companyId });
-  }, [token]);
   const existingProductVariant = existVariant
     ? {
         id: existVariant.id,
@@ -138,7 +155,9 @@ export default function ProductVariantFormPage() {
           value: attr.value,
         })) || [{ name: "", value: "" }],
         basePrice: existVariant.price,
-        discountPercent: existVariant.product.discount_percent,
+        compareAtPrice: existVariant.compare_at_price || "",
+        saleStartsAt: existVariant.sale_starts_at || "",
+        saleEndsAt: existVariant.sale_ends_at || "",
         stocks: existVariant.stock_quantity?.toString() || "0",
         sku: existVariant.sku,
         warehouseId: existVariant.inventory?.warehouse_id || "",

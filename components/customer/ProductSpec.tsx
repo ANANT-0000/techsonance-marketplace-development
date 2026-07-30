@@ -51,63 +51,36 @@ export const ProductSpecifications = ({ product }: { product: ProductFeature[] }
                 </span>
             </div>
 
-            {/* Table */}
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <table className="w-full text-theme-body-sm border-collapse" role="table" aria-label="Product Specifications">
-                    <tbody>
-                        <AnimatePresence initial={false}>
-                            {visibleItems.map((spec, idx) => {
-                                const value = formatValue(spec.description);
-                                const isBool = isBooleanLike(spec.description);
-                                const isPositive = spec.description === true;
+            {/* List */}
+            <div className="space-y-3 pt-2">
+                <AnimatePresence initial={false}>
+                    {visibleItems.map((spec, idx) => {
+                        const value = formatValue(spec.description);
 
-                                return (
-                                    <motion.tr
-                                        key={spec.title}
-                                        initial={{ opacity: 0, y: -6 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: -4 }}
-                                        transition={{ duration: 0.18, delay: idx * 0.025 }}
-                                        className={`
-                                            group border-b border-gray-100 last:border-0
-                                            ${idx % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}
-                                            hover:bg-blue-50/30 transition-colors duration-150
-                                        `}
-                                    >
-                                        {/* Key column */}
-                                        <td className="py-3.5 px-5 w-[42%] align-top">
-                                            <span className="font-semibold text-gray-700 capitalize leading-snug text-theme-caption-lg">
-                                                {spec.title}
-                                            </span>
-                                        </td>
-
-                                        {/* Divider */}
-                                        <td className="py-3.5 w-px align-top">
-                                            <div className="w-px h-full bg-gray-100 min-h-[20px]" />
-                                        </td>
-
-                                        {/* Value column */}
-                                        <td className="py-3.5 px-5 align-top">
-                                            {isBool ? (
-                                                <span className={`inline-flex items-center gap-1.5 text-theme-caption-lg font-semibold ${isPositive ? 'text-emerald-600' : 'text-gray-400'}`}>
-                                                    <CheckCircle2
-                                                        size={13}
-                                                        className={isPositive ? 'text-emerald-500' : 'text-gray-300'}
-                                                    />
-                                                    {value}
-                                                </span>
-                                            ) : (
-                                                <span className="text-gray-600 leading-snug text-theme-caption-lg">
-                                                    {value}
-                                                </span>
-                                            )}
-                                        </td>
-                                    </motion.tr>
-                                );
-                            })}
-                        </AnimatePresence>
-                    </tbody>
-                </table>
+                        return (
+                            <motion.div
+                                key={spec.title}
+                                initial={{ opacity: 0, y: -6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ duration: 0.18, delay: idx * 0.025 }}
+                                className="flex items-start gap-3"
+                            >
+                                <div className="mt-0.5 w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 size={12} className="text-white" />
+                                </div>
+                                <div>
+                                    <p className="text-theme-body-sm font-semibold text-gray-900 capitalize">
+                                        {spec.title}
+                                    </p>
+                                    <p className="text-theme-caption text-gray-500 mt-0.5">
+                                        {value}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        );
+                    })}
+                </AnimatePresence>
             </div>
 
             {/* Collapse / Expand toggle */}

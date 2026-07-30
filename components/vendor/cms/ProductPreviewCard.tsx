@@ -48,12 +48,12 @@ export const ProductPreviewCard = ({ productId }: { productId: string }) => {
   const price = product.base_price ?? product.basePrice ?? 0;
 
   return (
-    <div className="flex items-center gap-2 mt-1 bg-white p-2 rounded-lg border border-slate-100 animate-fadeIn">
+    <div className="flex items-center gap-3 mt-2 bg-white p-3 rounded-xl border border-gray-200 shadow-sm animate-fadeIn min-w-0">
       {imageUrl && (
         <img
           src={imageUrl}
           alt={product.name}
-          className="w-8 h-8 rounded object-cover border border-slate-100 shrink-0"
+          className="w-10 h-10 rounded-lg object-cover border border-gray-200 shadow-sm shrink-0"
         />
       )}
       <div className="text-theme-tiny leading-tight text-slate-500">

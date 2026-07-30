@@ -22,7 +22,7 @@ import { authToken } from "@/utils/authToken";
 import { redirect, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAppSelector } from "@/hooks/reduxHooks";
-import { VEDNOR_LOGIN_PATH, VEDNOR_REGISTER_PATH } from "@/constants";
+import { VEDNOR_LOGIN_PATH } from "@/constants";
 
 interface Attribute {
   name: string;
@@ -43,24 +43,26 @@ interface ProductFeature {
   description: string;
 }
 
-interface Product {
+interface VendorUpdateProductData {
   id: string;
   name: string;
   description: string;
   features: ProductFeature[];
   base_price: string;
-  discount_percent: string;
+  compare_at_price: string | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   stock_quantity: number;
   status: "active" | "inactive" | string;
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
   company_id: string;
   vendor_id: string;
-  category_id: string;
+  categories?: { id: string; name: string; is_primary: boolean }[];
   tax_slab_id: string;
 }
 
-interface ProductVariant {
+interface VendorUpdateVariantPayload {
   id: string;
   variant_name: string;
   sku: string;
@@ -73,7 +75,7 @@ interface ProductVariant {
   created_at: string; // ISO date string
   updated_at: string; // ISO date string
   product_id: string;
-  product: Product;
+  product: VendorUpdateProductData;
   inventory: Inventory;
   warehouse_id: string;
   weight_kg?: string;
@@ -99,7 +101,9 @@ const getCategoryOptions = async (
     });
 };
 const getExitingProduct = async (
-  setGetExitingProduct: (getExitingProduct: ProductVariant | null) => void,
+  setGetExitingProduct: (
+    getExitingProduct: VendorUpdateVariantPayload | null,
+  ) => void,
   id: string,
   token: string,
   companyId: string,
@@ -147,7 +151,15 @@ const getTaxSlabsOptions = async (
 };
 
 export default function ProductUpdateFormPage() {
-  const companyId = getClientCompanyId();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setCompanyId(getClientCompanyId());
+    setToken(authToken());
+    setIsMounted(true);
+  }, []);
 
   const { id } = useParams<{ id: string }>();
   const { user } = useAppSelector((state) => state.auth);
@@ -162,18 +174,22 @@ export default function ProductUpdateFormPage() {
     { value: string; label: string }[]
   >([]);
   const [exitingProduct, setGetExitingProduct] =
-    useState<ProductVariant | null>(null);
-  const token = authToken();
+    useState<VendorUpdateVariantPayload | null>(null);
+  useEffect(() => {
+    if (token && companyId) {
+      getExitingProduct(setGetExitingProduct, id, token, companyId);
+      getCategoryOptions(setCategoryOptions, token, companyId);
+      getWarehouseOptions(setWarehouseOptions, token, companyId);
+      getTaxSlabsOptions(token, setTaxSlabsOptions, companyId);
+    }
+  }, [token, id, companyId]);
+
+  if (!isMounted) return null;
+
   if (!token || !companyId) {
     redirect(VEDNOR_LOGIN_PATH);
   }
-  useEffect(() => {
-    getExitingProduct(setGetExitingProduct, id, token, companyId);
-    getCategoryOptions(setCategoryOptions, token, companyId);
-    getWarehouseOptions(setWarehouseOptions, token, companyId);
-    getTaxSlabsOptions(token, setTaxSlabsOptions, companyId);
-  }, [token, id]);
-  const exitingData: Partial<ProductFormInput | ProductFormOutput | {}> =
+  const exitingData: Partial<ProductFormInput> & { variantId?: string; productMedia?: any[]; featureMedia?: any[] } =
     exitingProduct
       ? {
           productName: exitingProduct?.product?.name || "",
@@ -186,7 +202,9 @@ export default function ProductUpdateFormPage() {
               }))
             : [],
           basePrice: exitingProduct?.product?.base_price || "",
-          discountPercent: exitingProduct?.product?.discount_percent || "",
+          compareAtPrice: exitingProduct?.product?.compare_at_price || "",
+          saleStartsAt: exitingProduct?.product?.sale_starts_at || "",
+          saleEndsAt: exitingProduct?.product?.sale_ends_at || "",
 
           // Fixed: Stock is inside the 'inventory' object
           stocks:
@@ -206,8 +224,12 @@ export default function ProductUpdateFormPage() {
               (img) => img?.imgType === ProductImageType.GALLERY,
             ) || [],
 
-          // Note: 'category_id' isn't in the provided JSON, but kept here if your schema expects it
-          category: exitingProduct?.product?.category_id || "",
+          // Map the new categories array back to an array of IDs for the checkbox list
+          categories:
+            exitingProduct?.product?.categories?.map((c: any) => c.id) || [],
+          primaryCategory:
+            exitingProduct?.product?.categories?.find((c: any) => c.is_primary)
+              ?.id || "",
           taxSlabId: exitingProduct?.product?.tax_slab_id || "",
           status: (exitingProduct?.status as ProductStatus) || "",
           variantId: exitingProduct?.id || "",
@@ -222,8 +244,9 @@ export default function ProductUpdateFormPage() {
       : {};
 
   return (
-    <main className="min-h-screen max-h-screen overflow-y-scroll py-8 w-full mx-auto">
-      <ProductForm
+    <main className="flex-1 w-full h-full overflow-y-auto px-4 sm:px-8 py-1 bg-[#fafafa]">
+      <div className="mx-auto space-y-6 pt-4 pb-12">
+        <ProductForm
         categoryOptions={categoryOptions}
         warehouseOptions={warehouseOptions}
         taxSlabsOptions={taxSlabsOptions}
@@ -231,6 +254,7 @@ export default function ProductUpdateFormPage() {
         existingData={exitingData}
         productId={id}
       />
+      </div>
     </main>
   );
 }

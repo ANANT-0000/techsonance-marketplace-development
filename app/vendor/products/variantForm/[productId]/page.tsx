@@ -63,7 +63,15 @@ const getWarehouseOptions = async ({
 import { useAppSelector } from "@/hooks/reduxHooks";
 
 export default function ProductVariantFormPage() {
-  const companyId = getClientCompanyId();
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setCompanyId(getClientCompanyId());
+    setToken(authToken());
+    setIsMounted(true);
+  }, []);
 
   const { productId } = useParams<{ productId: string }>();
   const { user } = useAppSelector((state) => state.auth);
@@ -76,7 +84,15 @@ export default function ProductVariantFormPage() {
     name: string;
     category: { id: string; name: string };
   } | null>(null);
-  const token = authToken();
+  useEffect(() => {
+    if (token && companyId) {
+      fetchProductMainDetails({ productId, setProductDetails, token });
+      getWarehouseOptions({ setWarehouseOptions, token, companyId });
+    }
+  }, [token, companyId, productId]);
+
+  if (!isMounted) return null;
+
   if (!token || !companyId) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50/30">
@@ -84,11 +100,6 @@ export default function ProductVariantFormPage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    fetchProductMainDetails({ productId, setProductDetails, token });
-    getWarehouseOptions({ setWarehouseOptions, token, companyId });
-  }, [token]);
 
   return (
     <main className="min-h-screen max-h-screen overflow-y-scroll py-8 px-4 w-full mx-auto bg-slate-50/30">

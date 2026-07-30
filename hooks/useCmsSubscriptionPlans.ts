@@ -4,7 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import AxiosAPI from "@/lib/axios";
 import { toast } from "sonner";
 import { z } from "zod";
-import { FeatureType, PlanStatus, PriceInterval } from "@/utils/Types";
+import {
+  AsyncStatus,
+  FeatureType,
+  PlanStatus,
+  PriceInterval,
+} from "@/utils/Types";
 
 // ─── Types (mirrors cms_plans / cms_plan_prices / cms_plan_features) ────────
 // NOTE: the old SubscriptionPlanManager.tsx read `p.amount_cents` and divided
@@ -165,27 +170,32 @@ export function emptyPlanDraft(planKey: string): CmsPlanRow {
 // endpoint needs `?page=&limit=&sortBy=` support added first; swapping this
 // hook to use it is a small change (pass those params through and stop
 // slicing client-side).
-type AsyncStatus = "idle" | "loading" | "success" | "error";
 
 export function useCmsSubscriptionPlans() {
   const [plans, setPlans] = useState<CmsPlanRow[]>([]);
-  const [status, setStatus] = useState<AsyncStatus>("idle");
+  const [status, setStatus] = useState<AsyncStatus>(AsyncStatus.IDLE);
   const [error, setError] = useState<string | null>(null);
   const [savingKeys, setSavingKeys] = useState<Set<string>>(new Set());
+  const [conflictKeys, setConflictKeys] = useState<Set<string>>(new Set());
+  const [publishErrors, setPublishErrors] = useState<Record<string, string[]>>(
+    {},
+  );
 
   const fetchPlans = useCallback(async () => {
-    setStatus("loading");
+    setStatus(AsyncStatus.LOADING);
     setError(null);
     try {
       const res = await AxiosAPI.get("/v1/admin/subscription-plans");
-      const rows: CmsPlanRow[] = Array.isArray(res.data?.data) ? res.data.data : [];
+      const rows: CmsPlanRow[] = Array.isArray(res.data?.data)
+        ? res.data.data
+        : [];
       setPlans(rows);
-      setStatus("success");
+      setStatus(AsyncStatus.SUCCESS);
     } catch (err: any) {
       const message =
         err?.response?.data?.message || "Couldn't load subscription plans.";
       setError(message);
-      setStatus("error");
+      setStatus(AsyncStatus.ERROR);
     }
   }, []);
 
@@ -200,6 +210,26 @@ export function useCmsSubscriptionPlans() {
       else next.delete(key);
       return next;
     });
+
+  const resolveConflict = useCallback(
+    (planKey: string) => {
+      setConflictKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(planKey);
+        return next;
+      });
+      fetchPlans();
+    },
+    [fetchPlans],
+  );
+
+  const clearPublishError = useCallback((planKey: string) => {
+    setPublishErrors((prev) => {
+      const next = { ...prev };
+      delete next[planKey];
+      return next;
+    });
+  }, []);
 
   const saveDraft = useCallback(
     async (plan: CmsPlanRow) => {
@@ -233,19 +263,19 @@ export function useCmsSubscriptionPlans() {
             headers: {
               "x-suppress-redirect": "true",
             },
-          }
+          },
         );
         toast.success(`Draft saved for "${plan.plan_key}".`);
         await fetchPlans();
         return { ok: true, errors: {} as ValidationErrors };
       } catch (err: any) {
         // 409 = optimistic-concurrency conflict on `version` — someone else
-        // saved first. Reload rather than silently overwrite their change.
+        // saved first. Set conflict state instead of silently overwriting.
         if (err?.response?.status === 409) {
+          setConflictKeys((prev) => new Set(prev).add(plan.plan_key));
           toast.error(
-            `"${plan.plan_key}" was changed elsewhere — reloading the latest version.`,
+            `"${plan.plan_key}" was changed elsewhere. Please resolve the conflict.`,
           );
-          await fetchPlans();
         } else {
           toast.error(err?.response?.data?.message || "Failed to save draft.");
         }
@@ -266,7 +296,25 @@ export function useCmsSubscriptionPlans() {
         await fetchPlans();
         return true;
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to publish plan.");
+        const message = err?.response?.data?.message || "";
+        if (
+          err?.response?.status === 409 &&
+          message.includes("Unknown feature keys:")
+        ) {
+          // Extract the unknown feature keys from the message string
+          const keysString =
+            message.split("Unknown feature keys:")[1]?.trim() || "";
+          const missingKeys = keysString
+            .split(",")
+            .map((k: string) => k.trim())
+            .filter(Boolean);
+          if (missingKeys.length > 0) {
+            setPublishErrors((prev) => ({ ...prev, [planKey]: missingKeys }));
+            toast.error("Cannot publish: plan references undefined features.");
+            return false;
+          }
+        }
+        toast.error(message || "Failed to publish plan.");
         return false;
       } finally {
         setSaving(planKey, false);
@@ -279,12 +327,16 @@ export function useCmsSubscriptionPlans() {
     async (planKey: string) => {
       setSaving(planKey, true);
       try {
-        await AxiosAPI.post(`/v1/admin/subscription-plans/${planKey}/unpublish`);
+        await AxiosAPI.post(
+          `/v1/admin/subscription-plans/${planKey}/unpublish`,
+        );
         toast.success(`"${planKey}" unpublished successfully.`);
         await fetchPlans();
         return true;
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to unpublish plan.");
+        toast.error(
+          err?.response?.data?.message || "Failed to unpublish plan.",
+        );
         return false;
       } finally {
         setSaving(planKey, false);
@@ -311,7 +363,9 @@ export function useCmsSubscriptionPlans() {
         await fetchPlans();
         return { ok: true, errors: {} as ValidationErrors };
       } catch (err: any) {
-        toast.error(err?.response?.data?.message || "Failed to create plan template.");
+        toast.error(
+          err?.response?.data?.message || "Failed to create plan template.",
+        );
         return { ok: false, errors: {} as ValidationErrors };
       } finally {
         setSaving(key, false);
@@ -324,12 +378,16 @@ export function useCmsSubscriptionPlans() {
     plans,
     status,
     error,
-    isLoading: status === "loading",
+    isLoading: status === AsyncStatus.LOADING,
     isSaving: (key: string) => savingKeys.has(key),
     refetch: fetchPlans,
     saveDraft,
     publish,
     unpublish,
     createPlan,
+    conflictKeys,
+    resolveConflict,
+    publishErrors,
+    clearPublishError,
   };
 }

@@ -7,7 +7,7 @@ import { ImageIcon, Film, Loader2, Upload, X } from "lucide-react";
 
 export async function deleteCloudinaryAsset(url: string): Promise<void> {
   try {
-    await AxiosAPI.delete("/v1/cms/delete-cloudinary-image", {
+    await AxiosAPI.delete("/v1/upload-to-cloud/delete-image", {
       params: { url: url },
     });
   } catch {
@@ -50,14 +50,38 @@ export function MediaUploadField({
     formData.append("file", file);
 
     try {
-      const res = await AxiosAPI.post("/v1/cms/upload", formData, {
+      // 1. Get upload signature from backend
+      const sigRes = await AxiosAPI.get("/v1/upload-to-cloud/signature", {
         headers: {
-          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
         },
       });
-      if (res.data?.data?.secure_url) {
-        const newUrl = res.data.data.secure_url;
+      const { timestamp, signature, cloudName, apiKey } = sigRes.data?.data || sigRes.data;
+
+      if (!signature || !cloudName || !apiKey) {
+        throw new Error("Failed to get upload signature from server.");
+      }
+
+      // 2. Upload directly to Cloudinary
+      const cloudinaryFormData = new FormData();
+      cloudinaryFormData.append("file", file);
+      cloudinaryFormData.append("api_key", apiKey);
+      cloudinaryFormData.append("timestamp", timestamp.toString());
+      cloudinaryFormData.append("signature", signature);
+
+      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+        method: "POST",
+        body: cloudinaryFormData,
+      });
+
+      if (!cloudinaryRes.ok) {
+        throw new Error("Upload failed. Try again.");
+      }
+
+      const cloudinaryData = await cloudinaryRes.json();
+
+      if (cloudinaryData.secure_url) {
+        const newUrl = cloudinaryData.secure_url;
         if (oldUrl) {
           deleteCloudinaryAsset(oldUrl);
         }
@@ -66,7 +90,7 @@ export function MediaUploadField({
         throw new Error("Upload succeeded but no URL was returned.");
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Upload failed. Try again.");
+      setError(err?.message || err?.response?.data?.message || "Upload failed. Try again.");
     } finally {
       setUploading(false);
       e.target.value = "";

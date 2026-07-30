@@ -13,6 +13,7 @@ import {
   PromotionRuleType,
   PromotionType,
   TieredDiscountConfig,
+  Product,
 } from "@/utils/Types";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -428,3 +429,102 @@ export const formatFeatureDisplay = (f: CmsPlanFeature): string | null => {
 
   return `${label}: ${displayVal}`;
 };
+
+/**
+ * Resolves the display price and discount for a product considering active sales.
+ * Mirrors the logic from the backend PricingService.
+ * @param product - The product or product variant object to resolve pricing for.
+ * @returns Pricing details including active price, MRP, discount percentage, and whether a discount is applied.
+ */
+export function resolveDisplayPrice(
+  product: Partial<Product> | null | undefined,
+) {
+  if (!product || typeof product !== "object") {
+    return {
+      price: 0,
+      mrp: 0,
+      discountPercent: 0,
+      hasDiscount: false,
+    };
+  }
+
+  try {
+    // Attempt to read from product or first variant
+    let basePrice = Number(
+      product.variants?.[0]?.price ?? product.base_price ?? 0,
+    );
+    if (isNaN(basePrice) || basePrice < 0) {
+      basePrice = 0;
+    }
+
+    let rawCompareAtPrice =
+      product.compare_at_price ??
+      product.variants?.[0]?.compare_at_price ??
+      null;
+    let compareAtPrice: number | null = null;
+
+    if (rawCompareAtPrice !== null && rawCompareAtPrice !== undefined) {
+      compareAtPrice = Number(rawCompareAtPrice);
+      if (isNaN(compareAtPrice) || compareAtPrice < 0) {
+        compareAtPrice = null;
+      }
+    }
+
+    const saleStartsAt =
+      product.sale_starts_at ?? product.variants?.[0]?.sale_starts_at;
+    const saleEndsAt =
+      product.sale_ends_at ?? product.variants?.[0]?.sale_ends_at;
+
+    const now = new Date();
+    let isSaleActive = true;
+
+    if (saleStartsAt) {
+      const startDate = new Date(saleStartsAt);
+      if (!isNaN(startDate.getTime()) && now < startDate) {
+        isSaleActive = false;
+      }
+    }
+    if (saleEndsAt) {
+      const endDate = new Date(saleEndsAt);
+      if (!isNaN(endDate.getTime()) && now > endDate) {
+        isSaleActive = false;
+      }
+    }
+
+    let finalPrice: number = basePrice;
+    let finalMrp: number | null = compareAtPrice;
+
+    // If sale is expired or hasn't started, revert to the original price (compare_at_price)
+    if (!isSaleActive) {
+      if (finalMrp !== null && finalMrp > finalPrice) {
+        finalPrice = finalMrp;
+      }
+      finalMrp = null;
+    }
+
+    const hasDiscount = finalMrp !== null && finalMrp > finalPrice;
+    let discountPercent = 0;
+
+    if (hasDiscount && finalMrp! > 0) {
+      discountPercent = Math.round(
+        ((finalMrp! - finalPrice) / finalMrp!) * 100,
+      );
+      if (isNaN(discountPercent) || discountPercent < 0) discountPercent = 0;
+      if (discountPercent > 100) discountPercent = 100;
+    }
+
+    return {
+      price: finalPrice,
+      mrp: finalMrp || 0,
+      discountPercent,
+      hasDiscount,
+    };
+  } catch (error) {
+    return {
+      price: 0,
+      mrp: 0,
+      discountPercent: 0,
+      hasDiscount: false,
+    };
+  }
+}

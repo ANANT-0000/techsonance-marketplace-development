@@ -5,7 +5,7 @@ import { ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { useState } from "react";
 export async function deleteCloudinaryAsset(url: string): Promise<void> {
   try {
-    await AxiosAPI.delete("/v1/cms/delete-cloudinary-image", {
+    await AxiosAPI.delete("/v1/upload-to-cloud/delete-image", {
       params: { url: url },
     });
   } catch {
@@ -54,16 +54,40 @@ export function ImageUploadField({
     formData.append("file", file);
 
     try {
-      const res = await AxiosAPI.post("/v1/cms/upload", formData, {
+      // 1. Get upload signature from backend
+      const sigRes = await AxiosAPI.get("/v1/upload-to-cloud/signature", {
         headers: {
-          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
         },
       });
-      if (res.data?.data?.secure_url) {
-        const newUrl = res.data.data.secure_url;
+      const { timestamp, signature, cloudName, apiKey } = sigRes.data?.data || sigRes.data;
 
-        // 1. Delete old asset from Cloudinary (non-blocking)
+      if (!signature || !cloudName || !apiKey) {
+        throw new Error("Failed to get upload signature from server.");
+      }
+
+      // 2. Upload directly to Cloudinary
+      const cloudinaryFormData = new FormData();
+      cloudinaryFormData.append("file", file);
+      cloudinaryFormData.append("api_key", apiKey);
+      cloudinaryFormData.append("timestamp", timestamp.toString());
+      cloudinaryFormData.append("signature", signature);
+
+      const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+        method: "POST",
+        body: cloudinaryFormData,
+      });
+
+      if (!cloudinaryRes.ok) {
+        throw new Error(UiText.UPLOAD_FAILED);
+      }
+
+      const cloudinaryData = await cloudinaryRes.json();
+
+      if (cloudinaryData.secure_url) {
+        const newUrl = cloudinaryData.secure_url;
+
+        // 1. Delete old asset from Cloudinary (non-blocking, via our backend)
         if (oldUrl) {
           deleteCloudinaryAsset(oldUrl);
         }
@@ -81,7 +105,7 @@ export function ImageUploadField({
           }
         }
       } else {
-        throw new Error("Upload succeeded but no URL returned.");
+        throw new Error("Upload succeeded but no URL returned from Cloudinary.");
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || UiText.UPLOAD_FAILED);
@@ -117,18 +141,18 @@ export function ImageUploadField({
   };
 
   return (
-    <div>
-      <label className="block text-theme-caption font-bold text-gray-500 mb-1.5">
+    <div className="group">
+      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 transition-colors group-focus-within:text-slate-900">
         {label}
       </label>
-      <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl p-3">
+      <div className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-[0_2px_10px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-slate-300 min-w-0 group-focus-within:ring-[3px] group-focus-within:ring-slate-900/10 group-focus-within:border-slate-900">
         {/* Preview thumbnail with Remove button */}
         {value ? (
-          <div className="relative w-12 h-12 rounded-lg overflow-visible shrink-0">
+          <div className="relative w-14 h-14 rounded-xl overflow-visible shrink-0 group/img">
             <img
               src={value}
               alt={UiText.PREVIEW}
-              className="w-12 h-12 object-cover rounded-lg border border-gray-200 bg-white shadow-sm"
+              className="w-14 h-14 object-cover rounded-xl border border-slate-200 bg-white shadow-sm transition-transform duration-300 group-hover/img:scale-105"
             />
             {/* Remove ✕ button */}
             <button
@@ -136,27 +160,27 @@ export function ImageUploadField({
               onClick={handleRemove}
               disabled={removing || uploading}
               title={UiText.REMOVE_IMAGE}
-              className="absolute -top-1.5 -right-1.5 w-4.5 h-4.5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-sm transition-colors disabled:opacity-50"
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 disabled:opacity-50 hover:scale-110"
             >
-              <X size={9} strokeWidth={3} />
+              <X size={12} strokeWidth={3} />
             </button>
           </div>
         ) : (
-          <div className="w-12 h-12 rounded-lg border border-dashed border-gray-300 flex items-center justify-center bg-white text-gray-400 shrink-0">
-            <ImageIcon size={16} />
+          <div className="w-14 h-14 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 text-slate-400 shrink-0 transition-colors duration-300 group-hover:border-slate-400 group-hover:text-slate-900 group-hover:bg-slate-100">
+            <ImageIcon size={20} className="opacity-75" />
           </div>
         )}
 
-        <div className="flex-1 min-w-0">
-          <label className="inline-flex items-center gap-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-250 rounded-lg px-3 py-1.5 text-theme-caption font-bold cursor-pointer transition-all">
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <label className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl px-4 py-2 text-[13px] font-semibold cursor-pointer transition-all self-start shadow-sm active:scale-95">
             {uploading ? (
               <>
-                <Loader2 size={12} className="animate-spin text-purple-600" />
+                <Loader2 size={14} className="animate-spin text-slate-900" />
                 <span>{UiText.UPLOADING}</span>
               </>
             ) : (
               <>
-                <Upload size={12} className="text-gray-500" />
+                <Upload size={14} className="text-slate-500 group-hover:text-slate-900 transition-colors" />
                 <span>{UiText.UPLOAD_IMAGE}</span>
               </>
             )}
@@ -169,19 +193,19 @@ export function ImageUploadField({
             />
           </label>
           {error && (
-            <p className="text-theme-tiny text-red-500 mt-1">{error}</p>
+            <p className="text-[12px] text-red-500 mt-2 font-medium bg-red-50 px-2 py-1 rounded-md inline-block self-start">{error}</p>
           )}
           {!error && autoSaved && (
-            <p className="text-theme-tiny text-emerald-600 mt-1 font-semibold">
-              {UiText.AUTO_SAVED}
+            <p className="text-[12px] text-emerald-600 mt-2 font-semibold">
+              ✓ {UiText.AUTO_SAVED}
             </p>
           )}
           {!error && !autoSaved && value && (
             <p
-              className="text-theme-tiny text-emerald-600 mt-1 truncate"
+              className="text-[12px] text-emerald-600 mt-2 font-medium truncate opacity-75"
               title={value}
             >
-              {UiText.CLOUDINARY_ATTACHED}
+              ✓ {UiText.CLOUDINARY_ATTACHED}
             </p>
           )}
         </div>
