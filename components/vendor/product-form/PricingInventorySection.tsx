@@ -4,12 +4,13 @@ import { DynamicIcon } from "lucide-react/dynamic";
 import { PRODUCT_FORM_PRICING_FIELDS } from "@/constants";
 import { PRODUCT_FORM_TEXT } from "@/constants/vendorText";
 import { ProductFormValuesType } from "@/utils/validation";
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 export const PricingInventorySection = () => {
   const {
-    register,
+    control,
     watch,
-    formState: { errors },
   } = useFormContext<ProductFormValuesType>();
 
   const basePriceVal = watch("basePrice");
@@ -86,52 +87,42 @@ export const PricingInventorySection = () => {
                 type: string;
                 placeholder: string;
               }) => {
-                const hasError = !!(
-                  errors as Record<string, { message?: string }>
-                )[field.name];
                 return (
-                  <div key={field.name}>
-                    <label className="form_label">{field.label}</label>
-                    <input
-                      type={field.type}
-                      className={`form_input ${hasError ? "form_input_invalid" : ""}`}
-                      placeholder={field.placeholder}
-                      {...register(
-                        field.name as import("react-hook-form").Path<ProductFormValuesType>,
-                      )}
-                      onKeyDown={(e) => {
-                        if (
-                          field.type === "number" &&
-                          ["e", "E", "+", "-"].includes(e.key)
-                        ) {
-                          e.preventDefault();
-                        }
-                      }}
-                      onPaste={(e) => {
-                        if (field.type === "number") {
-                          const pastedData = e.clipboardData.getData("Text");
-                          if (/[eE+-]/.test(pastedData)) {
-                            e.preventDefault();
-                          }
-                        }
-                      }}
-                    />
-                    {hasError && (
-                      <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
-                        <DynamicIcon
-                          fallback={() => <p></p>}
-                          name="alert-circle"
-                          size={12}
-                          className="shrink-0"
-                        />
-                        {
-                          (errors as Record<string, { message?: string }>)[
-                            field.name
-                          ]?.message as string
-                        }
-                      </p>
+                  <FormField
+                    key={field.name}
+                    control={control}
+                    name={field.name as import("react-hook-form").Path<ProductFormValuesType>}
+                    render={({ field: hookField }) => (
+                      <FormItem>
+                        <FormLabel>{field.label}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type={field.type}
+                            placeholder={field.placeholder}
+                            {...hookField}
+                            value={typeof hookField.value === 'string' ? hookField.value : ''}
+                            onKeyDown={(e) => {
+                              if (
+                                field.type === "number" &&
+                                ["e", "E", "+", "-"].includes(e.key)
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                            onPaste={(e) => {
+                              if (field.type === "number") {
+                                const pastedData = e.clipboardData.getData("Text");
+                                if (/[eE+-]/.test(pastedData)) {
+                                  e.preventDefault();
+                                }
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </div>
+                  />
                 );
               },
             )}

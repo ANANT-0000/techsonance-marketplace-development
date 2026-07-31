@@ -24,6 +24,7 @@ import {
   NavItemDisplayType,
   NavLinkItem,
   NavMenuLogoAlignment,
+  NavMenuLinksAlignment,
   NavMenuPosition,
   NavLayoutType,
   AnnouncementItem,
@@ -52,6 +53,7 @@ interface NavbarApiSettings {
   logo_alt?: string;
   logo_href?: string;
   logo_alignment?: NavMenuLogoAlignment;
+  links_alignment?: NavMenuLinksAlignment;
   position?: NavMenuPosition;
   show_shadow?: boolean;
   show_border?: boolean;
@@ -176,6 +178,12 @@ function transformApiResponse(data: NavbarApiResponse): {
           : NavMenuPosition.STICKY,
       showBottomBorder: s.show_border ?? true,
       showShadow: s.show_shadow ?? true,
+      linksAlignment:
+        s.links_alignment?.toLowerCase() === NavMenuLinksAlignment.RIGHT
+          ? NavMenuLinksAlignment.RIGHT
+          : s.links_alignment?.toLowerCase() === NavMenuLinksAlignment.CENTER
+            ? NavMenuLinksAlignment.CENTER
+            : NavMenuLinksAlignment.LEFT,
     },
     searchBar: {
       isVisible: s.search_visible ?? true,
@@ -191,12 +199,44 @@ function transformApiResponse(data: NavbarApiResponse): {
     },
     announcement: {
       isVisible: s.announcement_visible ?? false,
-      itemsLeft: s.announcement_items_left || [{ id: "def-left", type: "text", label: "Free shipping on all orders over $50 | Easy returns", visible_on: ["desktop", "mobile"], is_highlighted: false }],
+      itemsLeft: s.announcement_items_left || [
+        {
+          id: "def-left",
+          type: "text",
+          label: "Free shipping on all orders over $50 | Easy returns",
+          visible_on: ["desktop", "mobile"],
+          is_highlighted: false,
+        },
+      ],
       itemsRight: s.announcement_items_right || [
-        { id: "def-r1", type: "link", label: "Help & Support", target_route: "help", visible_on: ["desktop", "mobile"] },
-        { id: "def-r2", type: "link", label: "Track Order", target_route: "track-order", visible_on: ["desktop", "mobile"] },
-        { id: "def-r3", type: "feature", label: "USD", feature_key: "currency_selector", visible_on: ["desktop", "mobile"] },
-        { id: "def-r4", type: "feature", label: "EN", feature_key: "language_selector", visible_on: ["desktop", "mobile"] },
+        {
+          id: "def-r1",
+          type: "link",
+          label: "Help & Support",
+          target_route: "help",
+          visible_on: ["desktop", "mobile"],
+        },
+        {
+          id: "def-r2",
+          type: "link",
+          label: "Track Order",
+          target_route: "track-order",
+          visible_on: ["desktop", "mobile"],
+        },
+        {
+          id: "def-r3",
+          type: "feature",
+          label: "USD",
+          feature_key: "currency_selector",
+          visible_on: ["desktop", "mobile"],
+        },
+        {
+          id: "def-r4",
+          type: "feature",
+          label: "EN",
+          feature_key: "language_selector",
+          visible_on: ["desktop", "mobile"],
+        },
       ],
       bgColor: s.announcement_bg_color || "#f8f9fa",
       textColor: s.announcement_text_color || "#475569",

@@ -21,6 +21,7 @@ import {
   Tag,
   ChevronRight,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { loadCart } from "@/lib/features/Cart";
 import { CartItemListResponse } from "@/app/(storefront)/customer/cart/CartClient";
 import { CART_SIDEBAR_TEXT } from "@/constants/customerText";
@@ -185,29 +186,9 @@ export function CartSidebar() {
 
   // ── Desktop: slide-in sidebar ─────────────────────────────────────────────
   return (
-    <AnimatePresence>
-      {isCartOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={() => dispatch(toggleCartSidebar("close"))}
-            className="fixed inset-0 z-[60] bg-black/30 backdrop-blur-[2px]"
-            aria-hidden="true"
-          />
-
-          {/* Sidebar panel */}
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 28, stiffness: 260 }}
-            className="fixed right-0 top-0 z-[70] h-[100dvh] w-full max-w-[420px] bg-white shadow-2xl flex flex-col"
-            aria-label="Shopping cart"
-          >
+    <Sheet open={isCartOpen} onOpenChange={(open) => !open && dispatch(toggleCartSidebar("close"))}>
+      <SheetContent side="right" className="w-full max-w-[420px] sm:max-w-[420px] bg-white shadow-2xl flex flex-col p-0 gap-0 outline-none [&>button]:hidden">
+        <SheetTitle className="sr-only">{CART_SIDEBAR_TEXT.HEADER_TITLE}</SheetTitle>
             {/* ── Header ─────────────────────────────────────────── */}
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
@@ -391,9 +372,7 @@ export function CartSidebar() {
                 </Link>
               </div>
             )}
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+      </SheetContent>
+    </Sheet>
   );
 }

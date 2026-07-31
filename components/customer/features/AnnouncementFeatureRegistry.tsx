@@ -21,14 +21,14 @@ function CurrencySelector({ label }: { label: string }) {
       <span className="uppercase">{currency}</span>
       <ChevronDown
         size={12}
-        className="opacity-70 group-hover:rotate-180 transition-transform"
+        className="opacity-70 group-hover:rotate-180 transition-transform duration-200 ease-out"
       />
-      <div className="absolute top-full right-0 mt-1 hidden group-hover:flex flex-col bg-white text-slate-800 shadow-lg border border-slate-200 rounded-lg overflow-hidden z-[100] min-w-[100px] text-left">
+      <div className="absolute top-full right-0 mt-1.5 hidden group-hover:flex flex-col bg-white text-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-stone-200 rounded-xl overflow-hidden z-[100] min-w-[100px] text-left">
         {options.map((opt) => (
           <div
             key={opt}
             onClick={() => setCurrency(opt)}
-            className="px-4 py-2 hover:bg-slate-100 text-xs font-medium !text-slate-800 text-left w-full text-nowrap"
+            className="px-4 py-2 hover:bg-amber-50 text-xs font-medium !text-stone-800 text-left w-full text-nowrap transition-colors"
           >
             {opt}
           </div>
@@ -46,14 +46,14 @@ function LanguageSelector({ label }: { label: string }) {
       <span className="uppercase">{lang}</span>
       <ChevronDown
         size={12}
-        className="opacity-70 group-hover:rotate-180 transition-transform"
+        className="opacity-70 group-hover:rotate-180 transition-transform duration-200 ease-out"
       />
-      <div className="absolute top-full right-0 mt-1 hidden group-hover:flex flex-col bg-white text-slate-800 shadow-lg border border-slate-200 rounded-lg overflow-hidden z-[100] min-w-[100px] text-left">
+      <div className="absolute top-full right-0 mt-1.5 hidden group-hover:flex flex-col bg-white text-stone-800 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-stone-200 rounded-xl overflow-hidden z-[100] min-w-[100px] text-left">
         {options.map((opt) => (
           <div
             key={opt}
             onClick={() => setLang(opt)}
-            className="px-4 py-2 hover:bg-slate-100 text-xs font-medium !text-slate-800 text-left w-full text-nowrap"
+            className="px-4 py-2 hover:bg-amber-50 text-xs font-medium !text-stone-800 text-left w-full text-nowrap transition-colors"
           >
             {opt}
           </div>

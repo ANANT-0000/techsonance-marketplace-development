@@ -98,17 +98,24 @@ const DEFAULT_THEME: StorefrontTheme = {
     HomepageSection.HERO,
     HomepageSection.CATEGORIES,
     HomepageSection.PRODUCTS,
+    HomepageSection.LOOKBOOK,
     HomepageSection.PROMO,
+    HomepageSection.SCARCITY,
     HomepageSection.NEW_ARRIVALS,
     HomepageSection.NEWSLETTER,
+    HomepageSection.CURATED,
+    HomepageSection.SOCIAL_PROOF,
   ],
   font_family: "Inter",
 };
 
+let fetchThemePromise: Promise<StorefrontTheme | null> | null = null;
+let memoryCachedTheme: StorefrontTheme | null = null;
+
 export function useThemeData() {
   const [themeData, setThemeData] = useState<StorefrontTheme>(() => {
     const cached = getCachedData(THEME_CACHE_KEY);
-    return cached || DEFAULT_THEME;
+    return cached || memoryCachedTheme || DEFAULT_THEME;
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -121,29 +128,54 @@ export function useThemeData() {
       return;
     }
 
-    try {
-      const res = await AxiosAPI.get("/v1/company-identity/branding", {
+    if (memoryCachedTheme) {
+      setThemeData(memoryCachedTheme);
+      setIsLoading(false);
+      return;
+    }
+
+    if (!fetchThemePromise) {
+      fetchThemePromise = AxiosAPI.get("/v1/company-identity/branding", {
         headers: { "x-suppress-toast": true },
-      });
-      const branding = res.data?.data ?? res.data;
-      if (branding && typeof branding === "object" && branding.primary_color) {
-        let homepageLayout = branding.homepage_layout;
-        if (typeof homepageLayout === "string") {
-          try {
-            homepageLayout = JSON.parse(homepageLayout);
-          } catch {
-            homepageLayout = homepageLayout
-              .split(",")
-              .map((s: string) => s.trim());
+      })
+        .then((res) => {
+          const branding = res.data?.data ?? res.data;
+          if (
+            branding &&
+            typeof branding === "object" &&
+            branding.primary_color
+          ) {
+            let homepageLayout = branding.homepage_layout;
+            if (typeof homepageLayout === "string") {
+              try {
+                homepageLayout = JSON.parse(homepageLayout);
+              } catch {
+                homepageLayout = homepageLayout
+                  .split(",")
+                  .map((s: string) => s.trim());
+              }
+            }
+            const parsed = {
+              ...branding,
+              homepage_layout: homepageLayout || DEFAULT_THEME.homepage_layout,
+            };
+            const merged = { ...DEFAULT_THEME, ...parsed };
+            memoryCachedTheme = merged;
+            cacheData(THEME_CACHE_KEY, merged);
+            return merged;
           }
-        }
-        const parsed = {
-          ...branding,
-          homepage_layout: homepageLayout || DEFAULT_THEME.homepage_layout,
-        };
-        const merged = { ...DEFAULT_THEME, ...parsed };
+          return null;
+        })
+        .catch(() => null)
+        .finally(() => {
+          fetchThemePromise = null;
+        });
+    }
+
+    try {
+      const merged = await fetchThemePromise;
+      if (merged) {
         setThemeData(merged);
-        cacheData(THEME_CACHE_KEY, merged);
       }
     } catch (err) {
     } finally {

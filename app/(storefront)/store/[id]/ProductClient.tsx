@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useReducer } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useImageColors } from "@/hooks/useImageColors";
@@ -62,6 +63,24 @@ import {
   PRODUCT_CLIENT_TEXT,
   BUY_BTN_TEXT,
 } from "@/constants/customerText";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 // ─── Trust Badges (dynamic, policy-driven) ───────────────────────────────────
 function buildTrustBadges(policy: ProductPolicyInfo | null | undefined) {
@@ -95,19 +114,21 @@ function buildTrustBadges(policy: ProductPolicyInfo | null | undefined) {
 function PolicyInfoCard({ policy }: { policy: ProductPolicyInfo | null }) {
   if (!policy) {
     return (
-      <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 px-4 py-4 flex items-start gap-3">
-        <div className="mt-0.5 p-1.5 bg-gray-100 rounded-full shrink-0">
-          <Shield size={14} className="text-gray-400" />
-        </div>
-        <div>
-          <p className="text-theme-body-sm font-semibold text-gray-700">
-            {PRODUCT_POLICY_TEXT.STANDARD_POLICY_TITLE}
-          </p>
-          <p className="text-theme-caption text-gray-500 mt-0.5">
-            {PRODUCT_POLICY_TEXT.STANDARD_POLICY_DESC}
-          </p>
-        </div>
-      </div>
+      <Card className="rounded-2xl border-dashed border-gray-200 bg-gray-50/50 shadow-none">
+        <CardContent className="p-4 flex items-start gap-3 pb-4">
+          <div className="mt-0.5 p-1.5 bg-gray-100 rounded-full shrink-0">
+            <Shield size={14} className="text-gray-400" />
+          </div>
+          <div>
+            <p className="text-theme-body-sm font-semibold text-gray-700">
+              {PRODUCT_POLICY_TEXT.STANDARD_POLICY_TITLE}
+            </p>
+            <p className="text-theme-caption text-gray-500 mt-0.5">
+              {PRODUCT_POLICY_TEXT.STANDARD_POLICY_DESC}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -115,52 +136,68 @@ function PolicyInfoCard({ policy }: { policy: ProductPolicyInfo | null }) {
     policy.return_replace_mode !== ReturnReplaceMode.NONE;
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
-      <p className="text-theme-caption font-bold text-gray-500 uppercase tracking-wider mb-2.5">
-        {PRODUCT_POLICY_TEXT.RETURN_AND_WARRANTY}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {policy.is_returnable && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-full text-theme-caption font-semibold">
-            <RotateCcw size={12} />
-            {policy.return_window_days
-              ? `${policy.return_window_days}${PRODUCT_POLICY_TEXT.DAY_RETURNS}`
-              : PRODUCT_POLICY_TEXT.RETURNS_ACCEPTED}
-          </span>
-        )}
-        {policy.is_replaceable && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-full text-theme-caption font-semibold">
-            <Package size={12} />
-            {policy.replacement_window_days
-              ? `${policy.replacement_window_days}${PRODUCT_POLICY_TEXT.DAY_REPLACEMENT}`
-              : PRODUCT_POLICY_TEXT.REPLACEMENT_ACCEPTED}
-          </span>
-        )}
-        {policy.has_warranty && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-100 text-purple-700 rounded-full text-theme-caption font-semibold">
-            <Shield size={12} />
-            {policy.warranty_duration_label ??
-              PRODUCT_POLICY_TEXT.WARRANTY_INCLUDED}
-          </span>
-        )}
-        {!hasReturnOrReplace && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-100 text-red-600 rounded-full text-theme-caption font-semibold">
-            <AlertCircle size={12} />
-            {PRODUCT_POLICY_TEXT.NO_RETURNS_FINAL_SALE}
-          </span>
-        )}
-      </div>
-      {policy.return_conditions && hasReturnOrReplace && (
-        <p className="mt-2.5 text-theme-caption text-gray-500 leading-relaxed">
-          {policy.return_conditions}
+    <Card className="rounded-2xl border-gray-100 bg-gray-50 shadow-none">
+      <CardContent className="p-4 pb-4">
+        <p className="text-theme-caption font-bold text-gray-500 uppercase tracking-wider mb-2.5">
+          {PRODUCT_POLICY_TEXT.RETURN_AND_WARRANTY}
         </p>
-      )}
-    </div>
+        <div className="flex flex-wrap gap-2">
+          {policy.is_returnable && (
+            <Badge
+              variant="outline"
+              className="gap-1.5 px-3 py-1 bg-emerald-50 border-emerald-100 text-emerald-700 rounded-full text-theme-caption font-semibold"
+            >
+              <RotateCcw size={12} />
+              {policy.return_window_days
+                ? `${policy.return_window_days}${PRODUCT_POLICY_TEXT.DAY_RETURNS}`
+                : PRODUCT_POLICY_TEXT.RETURNS_ACCEPTED}
+            </Badge>
+          )}
+          {policy.is_replaceable && (
+            <Badge
+              variant="outline"
+              className="gap-1.5 px-3 py-1 bg-blue-50 border-blue-100 text-blue-700 rounded-full text-theme-caption font-semibold"
+            >
+              <Package size={12} />
+              {policy.replacement_window_days
+                ? `${policy.replacement_window_days}${PRODUCT_POLICY_TEXT.DAY_REPLACEMENT}`
+                : PRODUCT_POLICY_TEXT.REPLACEMENT_ACCEPTED}
+            </Badge>
+          )}
+          {policy.has_warranty && (
+            <Badge
+              variant="outline"
+              className="gap-1.5 px-3 py-1 bg-purple-50 border-purple-100 text-purple-700 rounded-full text-theme-caption font-semibold"
+            >
+              <Shield size={12} />
+              {policy.warranty_duration_label ??
+                PRODUCT_POLICY_TEXT.WARRANTY_INCLUDED}
+            </Badge>
+          )}
+          {!hasReturnOrReplace && (
+            <Badge
+              variant="outline"
+              className="gap-1.5 px-3 py-1 bg-red-50 border-red-100 text-red-600 rounded-full text-theme-caption font-semibold"
+            >
+              <AlertCircle size={12} />
+              {PRODUCT_POLICY_TEXT.NO_RETURNS_FINAL_SALE}
+            </Badge>
+          )}
+        </div>
+        {policy.return_conditions && hasReturnOrReplace && (
+          <p className="mt-2.5 text-theme-caption text-gray-500 leading-relaxed">
+            {policy.return_conditions}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
 // ─── Skeleton Components ──────────────────────────────────────────────────────
 import { ProductPageSkeleton } from "@/components/customer/ProductPageSkeleton";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import React from "react";
 // ─── Star Row ─────────────────────────────────────────────────────────────────
 const StarRow = ({ rating, size = 14 }: { rating: number; size?: number }) => (
   <span className="flex items-center gap-0.5">
@@ -280,6 +317,7 @@ function reducer(state: State, action: Action): State {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ProductClient({ id }: { id: string }) {
+  const [imgAspect, setImgAspect] = React.useState<number>(1);
   const router = useRouter();
   const token = authToken();
   const { user } = useAppSelector((state: RootState) => state.auth);
@@ -499,21 +537,48 @@ export default function ProductClient({ id }: { id: string }) {
       <Toaster position="top-center" />
 
       {/* ── Breadcrumb ─────────────────────────────────────────────── */}
-      <nav className="hidden lg:flex items-center gap-2 max-w-7xl mx-auto px-8 pt-6 pb-2 text-theme-caption text-gray-400 font-medium">
-        <span className="hover:text-gray-700 cursor-pointer transition-colors">
-          {PRODUCT_CLIENT_TEXT.HOME}
-        </span>
-        <ChevronRight size={12} />
-        <span className="hover:text-gray-700 cursor-pointer transition-colors capitalize">
-          {state.product?.categories?.find(c => c.is_primary)?.name ||
-            state.product?.categories?.[0]?.name ||
-            ProductClientConfig.FALLBACK_CATEGORY_NAME}
-        </span>
-        <ChevronRight size={12} />
-        <span className="text-gray-800 font-semibold">
-          {state.product?.name}
-        </span>
-      </nav>
+      <div className="hidden lg:block max-w-7xl mx-auto px-8 pt-6 pb-2">
+        <Breadcrumb>
+          <BreadcrumbList className="text-theme-caption font-medium text-gray-400">
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link
+                  href="/"
+                  className="hover:text-gray-700 transition-colors"
+                >
+                  {PRODUCT_CLIENT_TEXT.HOME}
+                </Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link
+                  href={`/store?category=${(
+                    state.product?.categories?.find((c) => c.is_primary)
+                      ?.name ||
+                    state.product?.categories?.[0]?.name ||
+                    "all"
+                  )
+                    .toLowerCase()
+                    .replace(/\s+/g, "-")}`}
+                  className="hover:text-gray-700 transition-colors capitalize"
+                >
+                  {state.product?.categories?.find((c) => c.is_primary)?.name ||
+                    state.product?.categories?.[0]?.name ||
+                    ProductClientConfig.FALLBACK_CATEGORY_NAME}
+                </Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="text-gray-800 font-semibold">
+                {state.product?.name}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
 
       {/* ── Hero Section ───────────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 lg:py-8">
@@ -555,10 +620,7 @@ export default function ProductClient({ id }: { id: string }) {
             )}
 
             {/* Main image */}
-            <div
-              // style={{ background: bgColor }}
-              className="relative flex-1 rounded-3xl overflow-hidden transition-colors duration-500"
-            >
+            <div className="relative flex-1 rounded-3xl overflow-hidden transition-colors duration-500">
               {/* Top actions */}
               <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
                 <WishListBtn
@@ -568,9 +630,9 @@ export default function ProductClient({ id }: { id: string }) {
                 />
               </div>
 
-              <div className="block lg:hidden">
-                {/* Mobile carousel */}
-                <>
+              <AspectRatio ratio={imgAspect} className="w-full">
+                <div className="block lg:hidden w-full h-full">
+                  {/* Mobile carousel */}
                   <AnimatePresence mode="wait">
                     <motion.img
                       key={state.activeIndex}
@@ -580,7 +642,15 @@ export default function ProductClient({ id }: { id: string }) {
                       transition={{ duration: 0.22 }}
                       src={state.productImages[state.activeIndex]?.image_url}
                       alt={state.product?.name}
-                      className="w-full aspect-square object-contain"
+                      onLoad={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target.naturalWidth && target.naturalHeight) {
+                          setImgAspect(
+                            target.naturalWidth / target.naturalHeight,
+                          );
+                        }
+                      }}
+                      className="w-full h-full object-cover"
                       drag="x"
                       dragConstraints={{ left: 0, right: 0 }}
                       dragElastic={0.15}
@@ -674,25 +744,33 @@ export default function ProductClient({ id }: { id: string }) {
                       <ChevronRight size={18} className="text-gray-700" />
                     </button>
                   )}
-                </>
-              </div>
-              <div className="hidden lg:block relative flex-1 rounded-3xl overflow-hidden transition-colors duration-500">
-                <AnimatePresence mode="wait">
-                  <motion.img
-                    key={state.activeImage}
-                    initial={{ opacity: 0, scale: 1.03 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.28 }}
-                    src={state.activeImage}
-                    alt={state.product?.name}
-                    className="w-full aspect-square object-contain"
-                  />
-                </AnimatePresence>
-              </div>
+                </div>
+
+                <div className="hidden lg:block relative w-full h-full overflow-hidden transition-colors duration-500">
+                  <AnimatePresence mode="wait">
+                    <motion.img
+                      key={state.activeImage}
+                      initial={{ opacity: 0, scale: 1.03 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.28 }}
+                      src={state.activeImage}
+                      alt={state.product?.name}
+                      onLoad={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target.naturalWidth && target.naturalHeight) {
+                          setImgAspect(
+                            target.naturalWidth / target.naturalHeight,
+                          );
+                        }
+                      }}
+                      className="w-full h-full object-cover"
+                    />
+                  </AnimatePresence>
+                </div>
+              </AspectRatio>
             </div>
           </div>
-
           {/* ── Product Info ──────────────────────────────────────── */}
           <motion.div
             initial="hidden"
@@ -709,7 +787,9 @@ export default function ProductClient({ id }: { id: string }) {
               className="flex items-center justify-between"
             >
               <span className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-theme-xxs font-semibold tracking-widest uppercase px-3 py-1 rounded-full">
-                {state.product?.categories?.find(c => c.is_primary)?.name || state.product?.categories?.[0]?.name || PRODUCT_CLIENT_TEXT.PRODUCT}
+                {state.product?.categories?.find((c) => c.is_primary)?.name ||
+                  state.product?.categories?.[0]?.name ||
+                  PRODUCT_CLIENT_TEXT.PRODUCT}
               </span>
               {totalReviews > 0 && (
                 <button
@@ -861,10 +941,13 @@ export default function ProductClient({ id }: { id: string }) {
                     </div>
                     <div>
                       <p className="text-theme-body-sm font-bold text-emerald-800 uppercase tracking-wide">
-                        {state.selectedCoupon.code} {PRODUCT_CLIENT_TEXT.APPLIED}
+                        {state.selectedCoupon.code}{" "}
+                        {PRODUCT_CLIENT_TEXT.APPLIED}
                       </p>
                       <p className="text-theme-caption text-emerald-600">
-                        {PRODUCT_CLIENT_TEXT.EXTRA}{formatCurrency(couponDiscount)}{PRODUCT_CLIENT_TEXT.SAVINGS}
+                        {PRODUCT_CLIENT_TEXT.EXTRA}
+                        {formatCurrency(couponDiscount)}
+                        {PRODUCT_CLIENT_TEXT.SAVINGS}
                       </p>
                     </div>
                   </div>
@@ -999,69 +1082,89 @@ export default function ProductClient({ id }: { id: string }) {
         </div>
       </section>
 
-      {/* ── Tabbed Details Section ──────────────────────────────────── */}
+      {/* ── Product Details & Features Section ──────────────────────── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 lg:mt-10 pb-8 lg:pb-12">
-        {/* Tab navigation */}
-        <div className="flex border-b border-gray-200 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {(
-            [
-              { key: "description", label: PRODUCT_CLIENT_TEXT.PRODUCT_DESCRIPTION },
-              { key: "specs", label: PRODUCT_CLIENT_TEXT.KEY_FEATURES },
-            ] as { key: Tab; label: string }[]
-          ).map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() =>
-                dispatch({ type: ActionType.SET_ACTIVE_TAB, payload: tab.key })
-              }
-              className={`shrink-0 px-5 py-3.5 text-theme-body-sm font-semibold border-b-2 transition-all duration-200 whitespace-nowrap
-                                ${
-                                  state.activeTab === tab.key
-                                    ? "border-gray-900 text-gray-900"
-                                    : "border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300"
-                                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Mobile Accordion View */}
+        <div className="lg:hidden pt-2">
+          <Accordion
+            type="multiple"
+            defaultValue={["item-features"]}
+            className="w-full"
+          >
+            <AccordionItem value="item-desc">
+              <AccordionTrigger className="text-gray-900 text-base font-semibold hover:no-underline">
+                {PRODUCT_CLIENT_TEXT.PRODUCT_DESCRIPTION}
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-600 leading-relaxed text-theme-body-sm space-y-3 pb-6">
+                {state.product?.description ? (
+                  state.product.description
+                    .split("\n")
+                    .map((line, i) => <p key={i}>{line}</p>)
+                ) : (
+                  <p className="text-gray-400 italic">
+                    {PRODUCT_CLIENT_TEXT.NO_DESCRIPTION}
+                  </p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="item-features" className="border-b-0">
+              <AccordionTrigger className="text-gray-900 text-base font-semibold hover:no-underline">
+                {PRODUCT_CLIENT_TEXT.KEY_FEATURES}
+              </AccordionTrigger>
+              <AccordionContent className="pt-2 pb-6">
+                {state.product?.features ? (
+                  <ProductSpecifications product={state.product.features} />
+                ) : (
+                  <p className="text-gray-400 italic text-theme-body-sm">
+                    {PRODUCT_CLIENT_TEXT.NO_SPECIFICATIONS}
+                  </p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
-        {/* Tab content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={state.activeTab}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2 }}
-            className="pt-8"
-          >
-            {state.activeTab === "description" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                <div className="prose prose-gray max-w-none text-gray-600 leading-relaxed text-theme-body-sm space-y-3">
-                  {state.product?.description ? (
-                    state.product.description
-                      .split("\n")
-                      .map((line, i) => <p key={i}>{line}</p>)
-                  ) : (
-                    <p className="text-gray-400 italic">
-                      {PRODUCT_CLIENT_TEXT.NO_DESCRIPTION}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {state.activeTab === "specs" &&
-              (state.product?.features ? (
-                <ProductSpecifications product={state.product.features} />
+        {/* Desktop Grid View */}
+        <div className="hidden lg:grid lg:grid-cols-2 gap-12 pt-8">
+          {/* Description */}
+          <div>
+            <div className="flex flex-col space-y-3 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {PRODUCT_CLIENT_TEXT.PRODUCT_DESCRIPTION}
+              </h2>
+              <Separator className="bg-gray-200" />
+            </div>
+            <div className="prose prose-gray max-w-none text-gray-600 leading-relaxed text-theme-body-sm space-y-3">
+              {state.product?.description ? (
+                state.product.description
+                  .split("\n")
+                  .map((line, i) => <p key={i}>{line}</p>)
               ) : (
-                <p className="text-gray-400 italic text-theme-body-sm">
-                  {PRODUCT_CLIENT_TEXT.NO_SPECIFICATIONS}
+                <p className="text-gray-400 italic">
+                  {PRODUCT_CLIENT_TEXT.NO_DESCRIPTION}
                 </p>
-              ))}
-          </motion.div>
-        </AnimatePresence>
+              )}
+            </div>
+          </div>
+
+          {/* Key Features */}
+          <div>
+            <div className="flex flex-col space-y-3 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {PRODUCT_CLIENT_TEXT.KEY_FEATURES}
+              </h2>
+              <Separator className="bg-gray-200" />
+            </div>
+            {state.product?.features ? (
+              <ProductSpecifications product={state.product.features} />
+            ) : (
+              <p className="text-gray-400 italic text-theme-body-sm">
+                {PRODUCT_CLIENT_TEXT.NO_SPECIFICATIONS}
+              </p>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* ── Customer Reviews Section ─────────────────────────────────── */}
@@ -1087,7 +1190,12 @@ export default function ProductClient({ id }: { id: string }) {
 
       {/* ── Category Products Section ────────────────────────────────── */}
       {state.product?.categories && state.product.categories.length > 0 && (
-        <CategoryProducts categoryId={state.product.categories.find(c => c.is_primary)?.id || state.product.categories[0].id} />
+        <CategoryProducts
+          categoryId={
+            state.product.categories.find((c) => c.is_primary)?.id ||
+            state.product.categories[0].id
+          }
+        />
       )}
 
       {/* ── On Sale Products Section ─────────────────────────────────── */}
@@ -1119,18 +1227,20 @@ export default function ProductClient({ id }: { id: string }) {
             </>
           ) : (
             <>
-              <button
+              <Button
                 disabled
-                className="flex-1 h-12 rounded-2xl border-2 border-gray-200 bg-gray-50 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed"
+                variant="outline"
+                className="flex-1 h-12 rounded-2xl border-2 border-gray-200 bg-gray-50 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed hover:bg-gray-50"
               >
                 {PRODUCT_CLIENT_TEXT.SELECT_A_VARIANT}
-              </button>
-              <button
+              </Button>
+              <Button
                 disabled
-                className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed"
+                variant="secondary"
+                className="flex-1 h-12 rounded-2xl bg-gray-100 text-gray-400 font-bold text-theme-body-sm cursor-not-allowed hover:bg-gray-100"
               >
                 {BUY_BTN_TEXT.BUY_NOW}
-              </button>
+              </Button>
             </>
           )}
         </div>

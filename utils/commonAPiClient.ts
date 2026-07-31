@@ -443,6 +443,16 @@ export const fetchCollectionProducts = async (
     const json = await response.json();
     const payload = json?.data ?? json;
 
+    if (Array.isArray(payload)) {
+      return {
+        data: payload,
+        total: payload.length,
+        offset: 0,
+        limit: payload.length,
+        totalPages: 1,
+      };
+    }
+
     return {
       data: Array.isArray(payload.data) ? payload.data : [],
       total: payload.total || 0,

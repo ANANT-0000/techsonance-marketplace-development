@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { ProductCard } from "../ProductCard";
-import AxiosAPI from "@/lib/axios";
+import { ProductCarousel } from "../ProductCarousel";
 import { fetchHomepageProducts } from "@/utils/commonAPiClient";
 import { CURATED_DISCOVERY_TEXT } from "@/constants/customerText";
+import { CURATED_DISCOVERY_DEFAULTS } from "@/constants";
 
 export enum CuratedType {
   TRENDING = "trending",
@@ -43,8 +43,6 @@ function SkeletonCard() {
     </div>
   );
 }
-
-import { CURATED_DISCOVERY_DEFAULTS } from "@/constants/storefront";
 
 export function CuratedDiscovery({
   title,
@@ -121,50 +119,39 @@ export function CuratedDiscovery({
           )}
         </div>
 
-        {/* Scrollable Products List Container */}
-        <div
-          ref={scrollRef}
-          className="flex gap-6 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-4 pr-4 items-stretch"
-          style={{ scrollSnapType: "x mandatory" }}
-        >
-          {loading ? (
-            Array.from({ length: 4 }).map((_, idx) => (
-              <SkeletonCard key={idx} />
-            ))
-          ) : products.length === 0 ? (
-            <div className="w-full text-center py-16 px-6 bg-white border border-slate-200 border-dashed rounded-3xl flex flex-col items-center justify-center gap-4 opacity-80 shadow-sm max-w-2xl mx-auto my-4">
-              <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-2">
-                <span className="text-3xl text-slate-300">✦</span>
-              </div>
-              <h3 className="text-theme-h5 font-bold text-slate-900">
-                {CURATED_DISCOVERY_TEXT.CURATION_IN_PROGRESS}
-              </h3>
-              <p className="text-theme-body-sm text-slate-500 max-w-sm leading-relaxed">
-                {CURATED_DISCOVERY_TEXT.CURATION_DESC}
-              </p>
-              <Link
-                href="/store"
-                className="mt-4 bg-slate-900 text-white hover:bg-slate-800 transition-colors px-6 py-2.5 text-theme-xxs font-bold uppercase tracking-widest rounded-xl"
+        {/* Product Carousel Container */}
+        {loading ? (
+          <div className="flex gap-6 overflow-x-hidden">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div
+                key={idx}
+                className="w-[85vw] sm:w-[280px] lg:w-[310px] shrink-0"
               >
-                {CURATED_DISCOVERY_TEXT.VIEW_ALL}
-              </Link>
+                <SkeletonCard />
+              </div>
+            ))}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="w-full text-center py-16 px-6 bg-white border border-slate-200 border-dashed rounded-3xl flex flex-col items-center justify-center gap-4 opacity-80 shadow-sm max-w-2xl mx-auto my-4">
+            <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-2">
+              <span className="text-3xl text-slate-300">✦</span>
             </div>
-          ) : (
-            products &&
-            products.length > 0 &&
-            products.map((p, idx) => {
-              let p_idx = 1;
-              p_idx = p_idx + 1;
-              return (
-                <div key={idx} className=" snap-start h-full">
-                  <ul className="list-none p-0 m-0 h-full">
-                    <ProductCard product={p} idx={p_idx} />
-                  </ul>
-                </div>
-              );
-            })
-          )}
-        </div>
+            <h3 className="text-theme-h5 font-bold text-slate-900">
+              {CURATED_DISCOVERY_TEXT.CURATION_IN_PROGRESS}
+            </h3>
+            <p className="text-theme-body-sm text-slate-500 max-w-sm leading-relaxed">
+              {CURATED_DISCOVERY_TEXT.CURATION_DESC}
+            </p>
+            <Link
+              href="/store"
+              className="mt-4 bg-slate-900 text-white hover:bg-slate-800 transition-colors px-6 py-2.5 text-theme-xxs font-bold uppercase tracking-widest rounded-xl"
+            >
+              {CURATED_DISCOVERY_TEXT.VIEW_ALL}
+            </Link>
+          </div>
+        ) : (
+          <ProductCarousel products={products} />
+        )}
       </div>
     </section>
   );

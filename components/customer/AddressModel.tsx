@@ -1,7 +1,7 @@
 "use client";
 import { FormInput } from "../common/FormInput";
 import { useForm } from "react-hook-form";
-import { motion, AnimatePresence } from "framer-motion";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   AddressFor,
   AddressOperation,
@@ -197,29 +197,11 @@ export const AddressModal = ({
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
-    <motion.div
-      className="fixed bottom-10 sm:bottom-0 inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
-      />
-
-      {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.98 }}
-        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-        className="relative bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-10 flex flex-col max-h-[92vh] sm:max-h-[88vh]"
-      >
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] p-0 gap-0 outline-none [&>button]:hidden">
+        <DialogTitle className="sr-only">
+          {operation === AddressOperation.EDIT ? "Edit Address" : "Add Address"}
+        </DialogTitle>
         {/* Header */}
         <div className="flex items-center justify-between py-4 px-5 border-b border-gray-100 bg-white shrink-0">
           <div className="flex items-center gap-3">
@@ -395,7 +377,7 @@ export const AddressModal = ({
             </Button>
           </div>
         </form>
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   );
 };

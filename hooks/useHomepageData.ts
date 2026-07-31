@@ -1,4 +1,4 @@
-import { CmsDataKey } from "@/constants/cms";
+import { CmsDataKey } from "@/constants";
 import { useState, useEffect, useCallback } from "react";
 import AxiosAPI from "@/lib/axios";
 import {

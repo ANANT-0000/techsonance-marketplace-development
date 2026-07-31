@@ -1,4 +1,9 @@
-import { CmsDataKey } from "@/constants/cms";
+import { CmsDataKey, getCategorySelectConfigs } from "@/constants";
+import {
+  CATEGORY_ASPECT_RATIO_OPTIONS,
+  CATEGORY_BORDER_RADIUS_OPTIONS,
+  TRUST_STRIP_LAYOUT_OPTIONS,
+} from "@/constants";
 
 import { CmsSection } from "./Section";
 import { AddBtn } from "./AddBtn";
@@ -24,29 +29,9 @@ import { toDatetimeLocal } from "@/lib/utils";
 import { HeroBgStyle, HeroLayout, HomeCategories } from "@/utils/Types";
 import { CategoryCard } from "@/components/customer/homepage/CategoryCard";
 import { MobileCategoryPill } from "@/components/customer/homepage/MobileCategoryPill";
-
-export const TRUST_STRIP_BG_OPTIONS = [
-  { value: "bg-white", label: "White" },
-  { value: "bg-gray-50", label: "Light Gray" },
-  { value: "bg-[#faf9f6]", label: "Warm White" },
-];
-
-export const TRUST_STRIP_LAYOUT_OPTIONS = [
-  { value: "default", label: "Default Grid" },
-  { value: "minimal", label: "Minimalist" },
-];
-
-export const TRUST_STRIP_ICON_OPTIONS = [
-  { value: "shipping", label: UiText.ICONS.SHIPPING },
-  { value: "security", label: UiText.ICONS.SECURITY },
-  { value: "quality", label: UiText.ICONS.QUALITY },
-  { value: "support", label: UiText.ICONS.SUPPORT },
-  { value: "warranty", label: "Warranty" },
-  { value: "gst", label: "GST Billing" },
-  { value: "delivery", label: "Delivery" },
-  { value: "replacement", label: "Replacement" },
-  { value: "default", label: UiText.ICONS.DEFAULT },
-];
+import { IconPicker } from "./IconPicker";
+import { Button } from "@/components/ui/button";
+import { VendorSectionBuilder, initialSectionState } from "./VendorSectionBuilder";
 
 export const CmsHomeTab = ({
   data,
@@ -65,12 +50,15 @@ export const CmsHomeTab = ({
   addItem: (key: string, val: any) => void;
   updateItem: (key: string, id: string, field: string, val: any) => void;
   makeAutoSave: (key: string) => (newUrl: string) => Promise<void>;
-  handleImageClick: (id: any) => void;
+  handleImageClick: (e: React.MouseEvent<HTMLDivElement>) => void;
   selectedHotspotId: any;
   setSelectedHotspotId: (id: any) => void;
 }) => {
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
-  const [previewCategories, setPreviewCategories] = useState<HomeCategories[]>([]);
+  const [previewCategories, setPreviewCategories] = useState<HomeCategories[]>(
+    [],
+  );
+  const [allCategories, setAllCategories] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     AxiosAPI.get("/v1/products/options")
@@ -82,13 +70,25 @@ export const CmsHomeTab = ({
       })
       .catch(() => setProducts([]));
 
-    AxiosAPI.get("/v1/categories/homepage?limit=3", { headers: { "x-suppress-toast": true } })
+    AxiosAPI.get("/v1/categories/homepage?limit=3", {
+      headers: { "x-suppress-toast": true },
+    })
       .then((res) => {
         if (res.data && Array.isArray(res.data.data)) {
           setPreviewCategories(res.data.data);
         }
       })
       .catch(() => setPreviewCategories([]));
+
+    AxiosAPI.get("/v1/categories?limit=500", {
+      headers: { "x-suppress-toast": true },
+    })
+      .then((res) => {
+        if (res.data && Array.isArray(res.data.data)) {
+          setAllCategories(res.data.data);
+        }
+      })
+      .catch(() => setAllCategories([]));
   }, []);
   return (
     <>
@@ -275,85 +275,74 @@ export const CmsHomeTab = ({
 
       <CmsSection title={UILabels.SECTIONS.CATEGORIES_SECTION}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SelectField
-            label="Desktop Card Aspect Ratio"
-            value={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP] || "aspect-[3/4]"}
-            onChange={(v: string) => set(CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP, v)}
-            options={[
-              { value: "aspect-[3/4]", label: "Portrait (3:4)" },
-              { value: "aspect-square", label: "Square (1:1)" },
-              { value: "aspect-[4/3]", label: "Landscape (4:3)" },
-              { value: "aspect-[16/9]", label: "Wide (16:9)" },
-              { value: "aspect-auto", label: "Auto" },
-            ]}
-          />
-          <SelectField
-            label="Mobile Card Aspect Ratio"
-            value={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE] || "aspect-square"}
-            onChange={(v: string) => set(CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE, v)}
-            options={[
-              { value: "aspect-[3/4]", label: "Portrait (3:4)" },
-              { value: "aspect-square", label: "Square (1:1)" },
-              { value: "aspect-[4/3]", label: "Landscape (4:3)" },
-              { value: "aspect-[16/9]", label: "Wide (16:9)" },
-              { value: "aspect-auto", label: "Auto" },
-            ]}
-          />
-          <SelectField
-            label="Desktop Card Border Radius"
-            value={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP] || "rounded-2xl"}
-            onChange={(v: string) => set(CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP, v)}
-            options={[
-              { value: "rounded-none", label: "None (Square)" },
-              { value: "rounded-md", label: "Small" },
-              { value: "rounded-2xl", label: "Large" },
-              { value: "rounded-full", label: "Pill / Circle" },
-            ]}
-          />
-          <SelectField
-            label="Mobile Card Border Radius"
-            value={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE] || "rounded-2xl"}
-            onChange={(v: string) => set(CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE, v)}
-            options={[
-              { value: "rounded-none", label: "None (Square)" },
-              { value: "rounded-md", label: "Small" },
-              { value: "rounded-2xl", label: "Large" },
-              { value: "rounded-full", label: "Pill / Circle" },
-            ]}
-          />
+          {getCategorySelectConfigs(data, set).map((config) => (
+            <SelectField
+              key={config.label}
+              label={config.label}
+              value={config.value}
+              onChange={config.onChange}
+              options={config.options}
+            />
+          ))}
         </div>
 
         <div className="mt-8 border-t border-gray-100 pt-6">
-          <h4 className="text-sm font-semibold text-gray-700 mb-4">Live Preview</h4>
+          <h4 className="text-sm font-semibold text-gray-700 mb-4">
+            {UiText.LIVE_PREVIEW}
+          </h4>
           <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
             {previewCategories.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center">Loading preview...</p>
+              <p className="text-gray-400 text-sm text-center">
+                {UiText.LOADING_PREVIEW_DOTS}
+              </p>
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Desktop View</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
+                    {UiText.DESKTOP_VIEW}
+                  </p>
                   <div className="flex gap-4 overflow-x-auto pb-4 items-center border border-gray-200 rounded-xl p-4 bg-white shadow-sm">
                     {previewCategories.slice(0, 3).map((cat, idx) => (
-                      <div key={idx} className="w-[140px] shrink-0 pointer-events-none">
+                      <div
+                        key={idx}
+                        className="w-[140px] shrink-0 pointer-events-none"
+                      >
                         <CategoryCard
                           cat={cat}
                           idx={idx}
-                          aspectRatio={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP] || "aspect-[3/4]"}
-                          borderRadius={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP] || "rounded-2xl"}
+                          aspectRatio={
+                            data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_DESKTOP] ||
+                            "aspect-[3/4]"
+                          }
+                          borderRadius={
+                            data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_DESKTOP] ||
+                            "rounded-2xl"
+                          }
                         />
                       </div>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Mobile View</p>
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">
+                    {UiText.MOBILE_VIEW}
+                  </p>
                   <div className="flex gap-3 overflow-x-auto pb-4 items-center max-w-[320px] bg-white p-4 rounded-[2rem] border-[4px] border-gray-800 shadow-xl">
                     {previewCategories.slice(0, 3).map((cat, idx) => (
-                      <div key={idx} className="shrink-0 pointer-events-none scale-90 origin-left">
+                      <div
+                        key={idx}
+                        className="shrink-0 pointer-events-none scale-90 origin-left"
+                      >
                         <MobileCategoryPill
                           cat={cat}
-                          aspectRatio={data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE] || "aspect-square"}
-                          borderRadius={data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE] || "rounded-2xl"}
+                          aspectRatio={
+                            data?.[CmsDataKey.CATEGORY_ASPECT_RATIO_MOBILE] ||
+                            "aspect-square"
+                          }
+                          borderRadius={
+                            data?.[CmsDataKey.CATEGORY_BORDER_RADIUS_MOBILE] ||
+                            "rounded-2xl"
+                          }
                         />
                       </div>
                     ))}
@@ -987,9 +976,23 @@ export const CmsHomeTab = ({
       </CmsSection>
 
       <CmsSection title="Trust Strip Configuration">
-        <div className="mt-5 border-t border-gray-100 pt-5">
-          <div className="flex justify-between items-center mb-3">
-            <h4 className="text-theme-caption font-bold text-gray-500 uppercase">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 mt-2">
+          <SelectField
+            label="Grid Layout Columns"
+            value={data?.[CmsDataKey.TRUST_STRIP_LAYOUT] || "4"}
+            onChange={(v: string) => set(CmsDataKey.TRUST_STRIP_LAYOUT, v)}
+            options={TRUST_STRIP_LAYOUT_OPTIONS}
+          />
+          <ColorField
+            label="Background Color"
+            value={data?.[CmsDataKey.TRUST_STRIP_BG_COLOR] || "#ffffff"}
+            onChange={(v: string) => set(CmsDataKey.TRUST_STRIP_BG_COLOR, v)}
+          />
+        </div>
+
+        <div className="border-t border-slate-100 pt-5">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               {UiText.TRUST_BADGE_STRIP}
             </h4>
             <AddBtn
@@ -1012,10 +1015,12 @@ export const CmsHomeTab = ({
               (bg: any, bIdx: number) => (
                 <div
                   key={bg.id || bIdx}
-                  className="flex gap-3 items-end bg-gray-50 p-4 rounded-xl border border-gray-150 relative"
+                  className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group/badge hover:border-slate-300 transition-colors"
                 >
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() =>
                       set(
                         "social_proof_badges",
@@ -1024,12 +1029,12 @@ export const CmsHomeTab = ({
                         ),
                       )
                     }
-                    className="absolute right-3 top-3 text-red-400 hover:text-red-650"
+                    className="absolute -right-2 -top-2 opacity-0 group-hover/badge:opacity-100 transition-opacity bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full h-8 w-8 shadow-sm border border-slate-200"
                   >
                     <Trash2 size={14} />
-                  </button>
-                  <div className="flex-1 grid grid-cols-3 gap-3">
-                    <SelectField
+                  </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <IconPicker
                       label={UiText.SELECT_ICON}
                       value={bg.icon}
                       onChange={(v: string) =>
@@ -1041,7 +1046,6 @@ export const CmsHomeTab = ({
                           ),
                         )
                       }
-                      options={TRUST_STRIP_ICON_OPTIONS}
                     />
                     <InputField
                       label={UILabels.FIELDS.BADGE_TITLE}
@@ -1193,6 +1197,54 @@ export const CmsHomeTab = ({
               onChange={(v: string) => set(CmsDataKey.CURATED_BG_COLOR, v)}
             />
           </div>
+        </div>
+      </CmsSection>
+
+      <CmsSection
+        title="Custom Product Rows"
+        action={
+          <AddBtn
+            onClick={() =>
+              addItem(CmsDataKey.DYNAMIC_SECTIONS, initialSectionState)
+            }
+            label="Add Section"
+          />
+        }
+      >
+        <div className="space-y-4">
+          {(data?.[CmsDataKey.DYNAMIC_SECTIONS] || []).map(
+            (section: any, idx: number) => (
+              <VendorSectionBuilder
+                key={section.id || idx}
+                initialData={section}
+                categories={allCategories}
+                onChange={(newSection) => {
+                  const currentSections = data?.[CmsDataKey.DYNAMIC_SECTIONS] || [];
+                  const nextArr = currentSections.map((i: any) =>
+                    i.id === section.id ? { ...newSection, id: section.id } : i
+                  );
+                  // Prevent infinite updates by checking if something actually changed
+                  if (JSON.stringify(currentSections) !== JSON.stringify(nextArr)) {
+                    set(CmsDataKey.DYNAMIC_SECTIONS, nextArr);
+                  }
+                }}
+                onRemove={() => removeItem(CmsDataKey.DYNAMIC_SECTIONS, section.id)}
+              />
+            ),
+          )}
+          {!(data?.[CmsDataKey.DYNAMIC_SECTIONS] || []).length && (
+            <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+              <div className="w-12 h-12 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center mx-auto mb-3">
+                <LayoutPanelLeft className="w-5 h-5 text-gray-400" />
+              </div>
+              <p className="text-sm font-semibold text-gray-700 mb-1">
+                No Custom Rows Yet
+              </p>
+              <p className="text-xs text-gray-500 max-w-xs mx-auto">
+                Click "Add Section" to create customizable product rows based on category, price, or tags.
+              </p>
+            </div>
+          )}
         </div>
       </CmsSection>
     </>

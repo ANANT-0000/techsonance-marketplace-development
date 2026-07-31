@@ -1,6 +1,4 @@
 "use client";
-import { getClientCompanyId } from "@/utils/getCompanyId";
-
 import { PRODUCT_FORM_TEXT } from "@/constants/vendorText";
 import { useAppSelector } from "@/hooks/reduxHooks";
 import {
@@ -8,8 +6,6 @@ import {
   useImageUploadManager,
   ManagedImage,
 } from "@/hooks/useImageUploadManager";
-
-import { authToken } from "@/utils/authToken";
 import { generateSKU } from "@/utils/generateSku";
 import {
   FileOrProductImage,
@@ -23,25 +19,27 @@ import {
   productSchema,
 } from "@/utils/validation";
 import { createProduct, updateProduct } from "@/utils/vendorApiClient";
-
 import { useEntitlementUsage } from "@/hooks/useEntitlementUsage";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { Info, Loader2 } from "lucide-react";
 import { redirect, useRouter } from "next/navigation";
 import { useEffect, useCallback, useState, use, useMemo } from "react";
-import { useFieldArray, useForm, FormProvider } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import toast from "react-hot-toast";
+import { Form } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
 import { GeneralInformationSection } from "./product-form/GeneralInformationSection";
 import { PricingInventorySection } from "./product-form/PricingInventorySection";
 import { LogisticsDimensionsSection } from "./product-form/LogisticsDimensionsSection";
 import { MediaAssetsSection } from "./product-form/MediaAssetsSection";
-
 import { RootState } from "@/lib/store";
 import { CategoryTaxationSection } from "./product-form/CategoryTaxationSection";
-
+import { SecureErrorHandler } from "@/utils/error/error.handler";
 // Replaced constants
 export function ProductForm({
+  companyId,
+  token,
   categoryOptions,
   warehouseOptions,
   taxSlabsOptions,
@@ -50,6 +48,8 @@ export function ProductForm({
   productId,
   optionsLoaded = false,
 }: {
+  companyId: string;
+  token: string;
   categoryOptions: { value: string; label: string }[];
   warehouseOptions: { value: string; label: string }[];
   taxSlabsOptions: { value: string; label: string }[];
@@ -64,18 +64,7 @@ export function ProductForm({
    *  Prevents the "missing options" banner from showing during initial page load. */
   optionsLoaded?: boolean;
 }) {
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setCompanyId(getClientCompanyId());
-    setToken(authToken());
-    setIsMounted(true);
-  }, []);
-
   const isUpdate = Boolean(productId && existingData);
-
   const methods = useForm({
     resolver: zodResolver(productSchema),
     mode: "onChange",
@@ -175,7 +164,9 @@ export function ProductForm({
 
         setValue("sku", newSku, { shouldValidate: true });
       }
-    } catch (err) {}
+    } catch (err) {
+      SecureErrorHandler.handle(err);
+    }
   }, [isAutoGenerating, attributes, productName, categoryName, setValue]);
   const formPageLabels = isUpdate
     ? PRODUCT_FORM_TEXT.PAGE.UPDATE
@@ -247,7 +238,7 @@ export function ProductForm({
           toast.success(PRODUCT_FORM_TEXT.MESSAGES.DRAFT_LOADED);
           localStorage.removeItem("productFormDraft");
         } catch (error) {
- 
+          SecureErrorHandler.handle(error);
         }
       }
     }
@@ -269,7 +260,7 @@ export function ProductForm({
     const successImages = productUpload.images
       .filter((img: ManagedImage) => img.status === UploadStatus.SUCCESS)
       .map((img: ManagedImage) => ({ image_url: img.cloudUrl, id: img.id }));
- 
+
     setValue("productMedia", successImages as unknown as FileOrProductImage[], {
       shouldDirty: true,
     });
@@ -279,7 +270,7 @@ export function ProductForm({
     const successImages = featureUpload.images
       .filter((img: ManagedImage) => img.status === UploadStatus.SUCCESS)
       .map((img: ManagedImage) => ({ image_url: img.cloudUrl, id: img.id }));
-    
+
     setValue("featureMedia", successImages as unknown as FileOrProductImage[], {
       shouldDirty: true,
     });
@@ -517,8 +508,6 @@ export function ProductForm({
       imagesToDelete: deletedImgs.length > 0 ? deletedImgs : undefined,
     };
 
-  
-
     try {
       productUpload.bypassCleanup();
       featureUpload.bypassCleanup();
@@ -604,7 +593,6 @@ export function ProductForm({
       }
       router.push("/vendor/products");
     } catch (error) {
- 
       toast.error(
         PRODUCT_FORM_TEXT.ERRORS.SAVE_FAILED ||
           PRODUCT_FORM_TEXT.ERRORS.UNEXPECTED_ERROR,
@@ -615,17 +603,16 @@ export function ProductForm({
       );
     }
   };
-  if (!isMounted) return null;
-
   return (
     <>
-      <button
+      <Button
         type="button"
+        variant="outline"
         onClick={() => router.back()}
-        className="flex items-center gap-4 py-2 px-3 mb-2 bg-white border border-slate-200 text-slate-500 rounded-xl hover:bg-slate-100 hover:text-slate-800 transition shadow-sm"
+        className="flex items-center gap-2 mb-2 rounded-xl"
       >
-        <ArrowLeft size={18} /> {PRODUCT_FORM_TEXT.ACTIONS.BACK}
-      </button>
+        <ArrowLeft size={16} /> {PRODUCT_FORM_TEXT.ACTIONS.BACK}
+      </Button>
       {optionsLoaded && hasMissingOptions && (
         <div className="mb-6 p-4 bg-yellow-50 text-yellow-800 border border-yellow-200 rounded-xl">
           <p className="flex items-center gap-2 font-medium">
@@ -637,12 +624,9 @@ export function ProductForm({
           </p>
         </div>
       )}
-      <FormProvider {...methods}>
+      <Form {...methods}>
         <form
           onSubmit={handleSubmit(onSubmit, (errors) => {
-          
-            const formValues = getValues();
-        
             toast.error(PRODUCT_FORM_TEXT.ERRORS.VALIDATION_FAILED, {
               icon: "⚠️",
               style: {
@@ -704,23 +688,23 @@ export function ProductForm({
           />
           {/* ── FOOTER CTA ── */}
           <div className="flex justify-end gap-3 pb-8">
-            <button
+            <Button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center gap-2 bg-blue-600 text-white text-theme-body-sm font-semibold py-2.5 px-8 rounded-xl hover:bg-blue-700 transition shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 font-semibold py-5 px-8 rounded-xl shadow-sm"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 size={15} className="animate-spin" />
+                  <Loader2 size={16} className="animate-spin" />
                   {isUpdate ? "Updating…" : "Publishing…"}
                 </>
               ) : (
                 formPageLabels.submitButton
               )}
-            </button>
+            </Button>
           </div>
         </form>
-      </FormProvider>
+      </Form>
     </>
   );
 }

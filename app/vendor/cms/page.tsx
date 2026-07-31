@@ -16,7 +16,7 @@ import { authToken } from "@/utils/authToken";
 import { getClientCompanyId } from "@/utils/getCompanyId";
 import { SessionErrorCard } from "@/components/vendor/SessionErrorCard";
 import { BrandingTab } from "@/components/vendor/BrandingTab";
-import { CmsDataKey } from "@/constants/cms";
+import { CmsDataKey } from "@/constants";
 import { UiText } from "@/constants/ui-text";
 import { CmsHomeTab } from "@/components/vendor/cms/CmsHomeTab";
 import { CmsFooterTab } from "@/components/vendor/cms/CmsFooterTab";
@@ -421,85 +421,60 @@ export default function CmsManagementPage({
             {labels.SUBTITLE}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          {isDirty && (
-            <button
-              type="button"
-              onClick={discardChanges}
-              disabled={saving || loading}
-              className="px-4 py-2.5 text-theme-caption font-bold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all shadow-sm disabled:opacity-50"
-            >
-              Discard Changes
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={save}
-            disabled={!isDirty || saving || loading}
-            className="flex items-center gap-2 bg-slate-900 hover:bg-black text-white font-bold text-theme-body-sm px-6 py-2.5 rounded-xl shadow disabled:opacity-50 transition-all"
-          >
-            {saving ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              <Save size={16} />
-            )}
-            {saving ? labels.SAVING : labels.SAVE_CHANGES}
-          </button>
-        </div>
       </div>
       {/* Tab + Lang selectors */}
-      <div className="bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl shadow-sm p-5 mb-8 flex flex-col lg:flex-row gap-6 sticky top-0 z-10">
-        <div className="flex-1">
-          <p className="text-theme-caption font-bold text-gray-400 uppercase mb-2">
+      <div className="bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl shadow-sm p-5 mb-8 flex flex-col gap-4 sticky top-0 z-50">
+        
+        {/* Header Row: Label & Actions */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <p className="text-theme-caption font-bold text-gray-400 uppercase">
             {labels.PAGE_SECTION}
           </p>
-          <div className="flex flex-wrap gap-1.5">
-            {PAGES.map((p) => (
+          <div className="flex items-center gap-3">
+            {isDirty && (
               <button
-                key={p}
-                onClick={() =>
-                  dispatch({ type: CmsActionType.SET_PAGE, payload: p })
-                }
-                className={`px-4 py-1.5 text-theme-caption font-bold rounded-lg border transition-all ${page === p ? "bg-slate-900 text-white border-slate-900" : "bg-gray-50 text-gray-600 border-gray-200 hover:border-slate-400"}`}
+                type="button"
+                onClick={discardChanges}
+                disabled={saving || loading}
+                className="px-4 py-2 text-theme-caption font-bold text-gray-500 hover:text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-all shadow-sm disabled:opacity-50"
               >
-                {PAGE_LABELS[p]}
-                {(dirty[p] || dirty[`${p}_${lang}`]) && (
-                  <span className="w-2 h-2 rounded-full bg-orange-400 inline-block ml-2 animate-pulse" />
-                )}
+                Discard Changes
               </button>
-            ))}
+            )}
+            <button
+              type="button"
+              onClick={save}
+              disabled={!isDirty || saving || loading}
+              className="flex items-center gap-2 bg-slate-900 hover:bg-black text-white font-bold text-theme-body-sm px-6 py-2 rounded-xl shadow transition-all disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
+            >
+              {saving ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <Save size={16} />
+              )}
+              {saving ? labels.SAVING : labels.SAVE_CHANGES}
+            </button>
           </div>
         </div>
-        {page !== PageType.THEME &&
-          page !== PageType.NAVBAR &&
-          page !== PageType.FILTERS && (
-            <div>
-              <p className="text-theme-caption font-bold text-gray-400 uppercase mb-2">
-                {labels.LANGUAGE}
-              </p>
-              <div className="flex gap-1.5">
-                {([LangType.EN, LangType.ES] as LangType[]).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() =>
-                      dispatch({ type: CmsActionType.SET_LANG, payload: l })
-                    }
-                    className={`flex items-center gap-1 px-4 py-1.5 text-theme-caption font-bold rounded-lg border transition-all ${lang === l ? "bg-slate-900 text-white border-slate-900" : "bg-gray-50 text-gray-600 border-gray-200"}`}
-                  >
-                    {l === LangType.EN ? (
-                      <>
-                        <Globe size={12} /> {labels.ENGLISH}
-                      </>
-                    ) : (
-                      <>
-                        <Languages size={12} /> {labels.ESPANOL}
-                      </>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+
+        {/* Tabs Row */}
+        <div className="flex flex-wrap gap-1.5">
+          {PAGES.map((p) => (
+            <button
+              key={p}
+              onClick={() =>
+                dispatch({ type: CmsActionType.SET_PAGE, payload: p })
+              }
+              className={`px-4 py-1.5 text-theme-caption font-bold rounded-lg border transition-all ${page === p ? "bg-slate-900 text-white border-slate-900" : "bg-gray-50 text-gray-600 border-gray-200 hover:border-slate-400"}`}
+            >
+              {PAGE_LABELS[p]}
+              {(dirty[p] || dirty[`${p}_${lang}`]) && (
+                <span className="w-2 h-2 rounded-full bg-orange-400 inline-block ml-2 animate-pulse" />
+              )}
+            </button>
+          ))}
+        </div>
+
       </div>
 
       {msg && (

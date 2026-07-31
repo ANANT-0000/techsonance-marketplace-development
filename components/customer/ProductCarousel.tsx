@@ -48,16 +48,20 @@ export function ProductCarousel({ products }: ProductCarouselProps) {
 
   return (
     <div className="relative group">
-      <div className="overflow-hidden -mx-4 px-4 md:mx-0 md:px-0" ref={emblaRef}>
+      <div
+        className="overflow-hidden -mx-4 px-4 md:mx-0 md:px-0"
+        ref={emblaRef}
+      >
         <div className="flex -ml-4 md:-ml-6 lg:-ml-8 touch-pan-y">
-          {products.map((product: Product, idx: number) => (
-            <div
-              key={product.id}
-              className="flex-none pl-4 md:pl-6 lg:pl-8 w-[65%] sm:w-1/2 md:w-1/3 lg:w-1/4"
-            >
-              <ProductCard product={product} idx={idx} />
-            </div>
-          ))}
+          {Array.isArray(products) &&
+            products.map((product: Product, idx: number) => (
+              <div
+                key={product.id}
+                className="flex-none pl-4 md:pl-6 lg:pl-8 w-[65%] sm:w-1/2 md:w-1/3 lg:w-1/4"
+              >
+                <ProductCard product={product} idx={idx} />
+              </div>
+            ))}
         </div>
       </div>
 

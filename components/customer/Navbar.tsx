@@ -20,6 +20,14 @@ import {
 } from "lucide-react";
 import { SearchBar } from "@/components/customer/SearchBar";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { motion, AnimatePresence } from "motion/react";
 import { RootState } from "@/lib/store";
 import { useAppDispatch, useAppSelector } from "@/hooks/reduxHooks";
@@ -40,6 +48,7 @@ import { useNavbarData } from "@/hooks/useNavbarData";
 import {
   NavItemColType,
   NavMenuLogoAlignment,
+  NavMenuLinksAlignment,
   NavMenuPosition,
   NavLinkItem,
   MegaMenuColumnData,
@@ -798,6 +807,7 @@ export function Navbar({
     l1Config && l1Config.navbar.position === NavMenuPosition.STICKY;
   const isLogoLeft =
     l1Config && l1Config.logo.alignment === NavMenuLogoAlignment.LEFT;
+  const linksAlign = l1Config?.navbar?.linksAlignment || NavMenuLinksAlignment.LEFT;
   const [isNavVisible, setIsNavVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
@@ -828,7 +838,7 @@ export function Navbar({
       {/* ANNOUNCEMENT BAR */}
       {l1Config?.announcement?.isVisible && (
         <div
-          className={`w-full font-medium px-4 py-2 flex flex-col sm:flex-row justify-between border-b border-black/5 ${l1Config.announcement.text_size || "text-[11px] sm:text-xs"} ${
+          className={`hidden md:flex w-full font-medium px-4 py-2 flex-col sm:flex-row justify-between border-b border-black/5 ${l1Config.announcement.text_size || "text-[11px] sm:text-xs"} ${
             l1Config.announcement.mobile_alignment === "left"
               ? "items-start sm:items-center"
               : l1Config.announcement.mobile_alignment === "right"
@@ -932,36 +942,10 @@ export function Navbar({
       </div>
 
       {/* MOBILE DRILL-DOWN SIDE DRAWER */}
-      {isMounted && createPortal(
-        <AnimatePresence>
-        {isMobileMenuOpen && (
-          <div className="lg:hidden fixed inset-0 z-[100] flex">
-            {/* Backdrop overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() =>
-                dispatchMenuState({
-                  type: NavbarActionType.SET_MOBILE_MENU_OPEN,
-                  payload: false,
-                })
-              }
-              className="absolute inset-0 bg-black/40 backdrop-blur-xs w-full h-full"
-            />
-
-            {/* Drawer content drawer panel */}
-            <motion.div
-              ref={drawerRef}
-              onKeyDown={handleDrawerKeyDown}
-              role="dialog"
-              aria-modal="true"
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "tween", duration: 0.25 }}
-              className="absolute top-0 bottom-0 left-0 w-[290px] bg-white border-r border-slate-150 shadow-2xl flex flex-col p-5 overflow-hidden"
-            >
+      {isMounted && (
+        <Sheet open={isMobileMenuOpen} onOpenChange={(open) => !open && dispatchMenuState({ type: NavbarActionType.SET_MOBILE_MENU_OPEN, payload: false })}>
+          <SheetContent side="left" className="w-[290px] p-5 flex flex-col outline-none border-r border-slate-150 gap-0 sm:max-w-[290px] [&>button]:hidden">
+            <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
               {/* Drawer Header */}
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 shrink-0">
                 <Link
@@ -1121,11 +1105,9 @@ export function Navbar({
                   </button>
                 )}
               </div>
-            </motion.div>
-          </div>
+            </SheetContent>
+          </Sheet>
         )}
-      </AnimatePresence>,
-      document.body)}
 
       {/* DESKTOP HEADER (hidden lg:flex) */}
       <nav
@@ -1151,7 +1133,13 @@ export function Navbar({
         {/* PRIMARY L1 NAVIGATION LINKS */}
         <ul
           className={`relative flex items-center space-x-7 text-sm font-medium ${
-            isLogoLeft ? "ml-8 mr-auto" : "flex-1 justify-start"
+            linksAlign === NavMenuLinksAlignment.CENTER
+              ? "flex-1 justify-center mx-8"
+              : linksAlign === NavMenuLinksAlignment.RIGHT
+              ? "flex-1 justify-end mr-8"
+              : isLogoLeft
+              ? "ml-8 mr-auto"
+              : "flex-1 justify-start"
           }`}
           onMouseLeave={handleMouseLeave}
         >
@@ -1450,94 +1438,54 @@ export function Navbar({
         <div className="flex items-center gap-5 flex-shrink-0">
           {/* Account/Profile Dropdown */}
           {l1Config && l1Config.utilities.showAccount && (
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={() =>
-                  dispatchMenuState({ type: NavbarActionType.TOGGLE_PROFILE })
-                }
-                className="p-2 text-navbar-foreground/80 hover:bg-slate-100 rounded-full transition-colors flex items-center gap-0.5 cursor-pointer"
-                aria-label={NAVBAR_UI_TEXT.PROFILE_ARIA_LABEL}
-                aria-expanded={isProfileOpen}
-              >
-                <User size={19} strokeWidth={1.7} />
-                <ChevronDown
-                  size={13}
-                  className={`transition-transform duration-200 ${
-                    isProfileOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-
-              <AnimatePresence>
-                {isProfileOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 8 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2.5 z-[100] text-slate-700 min-w-[200px] flex flex-col gap-0.5"
-                  >
-                    <button
-                      onClick={handleOrdersClick}
-                      className="w-full flex items-center gap-3 px-4.5 py-2.5 text-sm font-semibold text-slate-750 hover:bg-theme-primary/5 hover:text-theme-primary transition-colors text-left border-none bg-transparent cursor-pointer"
-                    >
-                      <ShoppingBag size={16} strokeWidth={1.5} />
-                      <span>{NAVBAR_UI_TEXT.MY_ORDERS}</span>
-                    </button>
-                    <button
-                      onClick={handleCartClick}
-                      className="w-full flex items-center gap-3 px-4.5 py-2.5 text-sm font-semibold text-slate-750 hover:bg-theme-primary/5 hover:text-theme-primary transition-colors text-left border-none bg-transparent cursor-pointer"
-                    >
-                      <ShoppingCart size={16} strokeWidth={1.5} />
-                      <span>{NAVBAR_UI_TEXT.MY_CART}</span>
-                    </button>
-                    <button
-                      onClick={handleAddressesClick}
-                      className="w-full flex items-center gap-3 px-4.5 py-2.5 text-sm font-semibold text-slate-750 hover:bg-theme-primary/5 hover:text-theme-primary transition-colors text-left border-none bg-transparent cursor-pointer"
-                    >
-                      <MapPin size={16} strokeWidth={1.5} />
-                      <span>{NAVBAR_UI_TEXT.MY_ADDRESSES}</span>
-                    </button>
-                    <button
-                      onClick={handleSupportClick}
-                      className="w-full flex items-center gap-3 px-4.5 py-2.5 text-sm font-semibold text-slate-750 hover:bg-theme-primary/5 hover:text-theme-primary transition-colors text-left border-none bg-transparent cursor-pointer"
-                    >
-                      <HelpCircle size={24} strokeWidth={1.5} />
-                      <span>{NAVBAR_UI_TEXT.SUPPORT}</span>
-                    </button>
-                    <div className="border-t border-slate-100 my-1"></div>
-                    <button
-                      onClick={handleAuthClick}
-                      className="w-full flex items-center gap-3 px-4.5 py-2.5 text-sm font-bold hover:bg-theme-primary/5 transition-colors text-left border-none bg-transparent cursor-pointer"
-                    >
-                      {isMounted && user?.id ? (
-                        <>
-                          <LogOut
-                            size={24}
-                            strokeWidth={1.5}
-                            className="text-red-500"
-                          />
-                          <span className="text-red-500">
-                            {NAVBAR_UI_TEXT.LOGOUT}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <LogIn
-                            size={24}
-                            strokeWidth={1.5}
-                            className="text-theme-primary"
-                          />
-                          <span className="text-theme-primary">
-                            {NAVBAR_UI_TEXT.SIGN_IN}
-                          </span>
-                        </>
-                      )}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            <DropdownMenu open={isProfileOpen} onOpenChange={(open) => { if (open !== isProfileOpen) dispatchMenuState({ type: NavbarActionType.TOGGLE_PROFILE }) }}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="p-2 text-navbar-foreground/80 hover:bg-slate-100 rounded-full transition-colors flex items-center gap-0.5 cursor-pointer"
+                  aria-label={NAVBAR_UI_TEXT.PROFILE_ARIA_LABEL}
+                >
+                  <User size={19} strokeWidth={1.7} />
+                  <ChevronDown
+                    size={13}
+                    className={`transition-transform duration-200 ${
+                      isProfileOpen ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px] rounded-xl p-2 z-[100]">
+                <DropdownMenuItem onClick={handleOrdersClick} className="flex items-center gap-3 px-3 py-2 cursor-pointer font-semibold text-slate-750 focus:bg-theme-primary/5 focus:text-theme-primary">
+                  <ShoppingBag size={16} strokeWidth={1.5} />
+                  <span>{NAVBAR_UI_TEXT.MY_ORDERS}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCartClick} className="flex items-center gap-3 px-3 py-2 cursor-pointer font-semibold text-slate-750 focus:bg-theme-primary/5 focus:text-theme-primary">
+                  <ShoppingCart size={16} strokeWidth={1.5} />
+                  <span>{NAVBAR_UI_TEXT.MY_CART}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleAddressesClick} className="flex items-center gap-3 px-3 py-2 cursor-pointer font-semibold text-slate-750 focus:bg-theme-primary/5 focus:text-theme-primary">
+                  <MapPin size={16} strokeWidth={1.5} />
+                  <span>{NAVBAR_UI_TEXT.MY_ADDRESSES}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSupportClick} className="flex items-center gap-3 px-3 py-2 cursor-pointer font-semibold text-slate-750 focus:bg-theme-primary/5 focus:text-theme-primary">
+                  <HelpCircle size={16} strokeWidth={1.5} />
+                  <span>{NAVBAR_UI_TEXT.SUPPORT}</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 border-slate-100" />
+                <DropdownMenuItem onClick={handleAuthClick} className="flex items-center gap-3 px-3 py-2 cursor-pointer font-bold focus:bg-theme-primary/5">
+                  {isMounted && user?.id ? (
+                    <>
+                      <LogOut size={16} strokeWidth={1.5} className="text-red-500" />
+                      <span className="text-red-500">{NAVBAR_UI_TEXT.LOGOUT}</span>
+                    </>
+                  ) : (
+                    <>
+                      <LogIn size={16} strokeWidth={1.5} className="text-theme-primary" />
+                      <span className="text-theme-primary">{NAVBAR_UI_TEXT.SIGN_IN}</span>
+                    </>
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
 
           {/* Wishlist Link */}

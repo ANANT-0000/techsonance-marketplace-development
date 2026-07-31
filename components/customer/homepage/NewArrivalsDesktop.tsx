@@ -42,7 +42,6 @@ export enum NewArrivalActionType {
 // 2. Interfaces
 // ─────────────────────────────────────────────────────────────────────────────
 
-
 export interface NewArrivalState {
   category: string;
   drawerOpen: boolean;
@@ -83,7 +82,9 @@ export const NEW_ARRIVALS_CONFIG = {
 // 4. Helper Logic (Deterministic Fallbacks for UI Consistency)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const getProductBadge = (product: Partial<StorefrontProduct> | null | undefined): string | null => {
+const getProductBadge = (
+  product: Partial<StorefrontProduct> | null | undefined,
+): string | null => {
   if (!product) return null;
   if (product.badge) return product.badge;
 
@@ -120,7 +121,6 @@ const getProductRating = (
   const mockReviews = 35 + (idNum % 150);
   return { rating: Number(mockRating.toFixed(1)), reviewCount: mockReviews };
 };
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. Reducer Implementation
@@ -229,14 +229,16 @@ function ProductCard({
   const { bg: bgColor } = useImageColors(imageUrl);
   const badge = getProductBadge(product);
   const { rating, reviewCount } = getProductRating(product);
-  const { price, mrp, discountPercent, hasDiscount } = resolveDisplayPrice(product);
+  const { price, mrp, discountPercent, hasDiscount } =
+    resolveDisplayPrice(product);
 
   const { items } = useAppSelector((state: RootState) => state.cart);
   const cartItem = items?.find((item) => item.productVariantId === variantId);
   const isInCart = !!(cartItem && cartItem.quantity > 0);
 
   const badgeStyles: Record<string, string> = {
-    [NEW_ARRIVALS_TEXT.BADGE_NEW]: "bg-indigo-50 text-indigo-600 border border-indigo-100",
+    [NEW_ARRIVALS_TEXT.BADGE_NEW]:
+      "bg-indigo-50 text-indigo-600 border border-indigo-100",
     "BEST SELLER": "bg-orange-50 text-orange-600 border border-orange-100",
     TRENDING: "bg-emerald-50 text-emerald-600 border border-emerald-100",
     LIMITED: "bg-rose-50 text-rose-600 border border-rose-100",
@@ -270,22 +272,24 @@ function ProductCard({
       {/* Image Container - Full width, aspect ratio 4:5 on desktop */}
       <div
         style={{ background: bgColor || "#F8FAFC" }}
-        className="relative aspect-square md:aspect-[4/5] w-full overflow-hidden flex items-center justify-center transition-colors duration-500 pointer-events-none z-0"
+        className="relative aspect-square md:aspect-[4/5] w-full overflow-hidden transition-colors duration-500 pointer-events-none z-0"
       >
-        <Image
-          src={imageUrl}
-          alt={product.name}
-          fill
-          sizes="(max-width: 768px) 100vw, 25vw"
-          className="object-contain p-4 transition-transform duration-300 group-hover:scale-[1.03]"
-        />
+        <div className="absolute inset-0 p-2 md:p-4 pointer-events-none z-0">
+          <Image
+            src={imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 768px) 100vw, 25vw"
+            className="object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+          />
+        </div>
       </div>
 
       {/* Info Content Area */}
       <div className="p-4 flex flex-col flex-grow bg-white pointer-events-none z-0">
         {/* Category name */}
         <div className="mb-1 text-xxs font-semibold text-gray-400 uppercase tracking-wider truncate">
-          {product.category?.name || "Audio"}
+          {product.category?.name}
         </div>
 
         {/* Product Title */}

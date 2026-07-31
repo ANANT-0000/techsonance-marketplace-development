@@ -4,14 +4,23 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authToken } from "@/utils/authToken";
 import SiteMapsSection from "@/components/admin/SiteMapsSection";
-import { Clock } from "lucide-react";
+import NavTemplatesSection from "@/components/admin/NavTemplatesSection";
+import { Clock, Map, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
-import { SITE_MAPS_TEXT } from "@/constants";
+import { SITE_MAPS_TEXT, NAV_TEMPLATES_TEXT } from "@/constants";
+
+enum SiteMapsTabEnum {
+  ROUTER_MAPPINGS = "ROUTER_MAPPINGS",
+  NAV_TEMPLATES = "NAV_TEMPLATES",
+}
 
 export default function SiteMapsPage() {
   const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<SiteMapsTabEnum>(
+    SiteMapsTabEnum.ROUTER_MAPPINGS,
+  );
 
   useEffect(() => {
     setIsMounted(true);
@@ -21,7 +30,6 @@ export default function SiteMapsPage() {
 
   if (!isMounted) return null;
 
-  // GUARD CONDITION: Token Missing Silent-Failure Feedback
   if (!token) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-100px)] p-6">
@@ -52,8 +60,39 @@ export default function SiteMapsPage() {
   }
 
   return (
-    <div className="w-full mx-auto px-6 py-10 w-full animate-in fade-in duration-300">
-      <SiteMapsSection token={token} />
+    <div className="w-full mx-auto max-h-screen overflow-y-scroll px-6 py-10 animate-in fade-in duration-300 space-y-8">
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100/80 rounded-2xl w-fit border border-slate-200/60">
+        <button
+          type="button"
+          onClick={() => setActiveTab(SiteMapsTabEnum.ROUTER_MAPPINGS)}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            activeTab === SiteMapsTabEnum.ROUTER_MAPPINGS
+              ? "bg-white text-slate-900 shadow-sm font-semibold"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Map size={16} />
+          {NAV_TEMPLATES_TEXT.TAB_ROUTER_MAPPINGS}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab(SiteMapsTabEnum.NAV_TEMPLATES)}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            activeTab === SiteMapsTabEnum.NAV_TEMPLATES
+              ? "bg-white text-slate-900 shadow-sm font-semibold"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <ShieldCheck size={16} />
+          {NAV_TEMPLATES_TEXT.TAB_NAV_TEMPLATES}
+        </button>
+      </div>
+
+      {activeTab === SiteMapsTabEnum.ROUTER_MAPPINGS ? (
+        <SiteMapsSection token={token} />
+      ) : (
+        <NavTemplatesSection token={token} />
+      )}
     </div>
   );
 }

@@ -295,7 +295,8 @@ export const SITE_MAPS_TEXT = {
 
 export const FILTER_RULES_TEXT = {
   TITLE: "Product Filters & Collections",
-  SUBTITLE: "Manage dynamic product collections and filter rules for your storefront.",
+  SUBTITLE:
+    "Manage dynamic product collections and filter rules for your storefront.",
   ADD_FILTER_BTN: "Create New Filter",
   MODAL_CREATE_TITLE: "Create Product Filter",
   MODAL_EDIT_TITLE: "Edit Product Filter",
@@ -309,7 +310,8 @@ export const FILTER_RULES_TEXT = {
   SAVE_BTN: "Save Filter",
   CANCEL_BTN: "Cancel",
   DELETE_BTN: "Delete Filter",
-  CONFIRM_DELETE: "Are you sure you want to delete this filter? Any navigation links using it will be broken.",
+  CONFIRM_DELETE:
+    "Are you sure you want to delete this filter? Any navigation links using it will be broken.",
   SUCCESS_CREATE: "Filter created successfully!",
   FAILED_CREATE: "Failed to create filter.",
   SUCCESS_UPDATE: "Filter updated successfully!",
@@ -317,5 +319,49 @@ export const FILTER_RULES_TEXT = {
   SUCCESS_DELETE: "Filter deleted successfully!",
   FAILED_DELETE: "Failed to delete filter.",
   FETCH_ERROR: "Failed to load filters.",
-  NO_FILTERS_FOUND: "No product filters found. Create one to power your dynamic collections!"
+  NO_FILTERS_FOUND:
+    "No product filters found. Create one to power your dynamic collections!",
+};
+
+export const NAV_TEMPLATES_TEXT = {
+  TAB_ROUTER_MAPPINGS: "Router Mappings",
+  TAB_NAV_TEMPLATES: "Navigation Mapping",
+  PAGE_TITLE: "Navigation Repair & Review",
+  PAGE_DESCRIPTION: "Review storefront navigation building blocks.",
+  RESCAN_BTN: "Refresh",
+  ADD_ITEM_BTN: "Add Custom Item",
+  STATUS_ACTIVE: "Active",
+  STATUS_BROKEN: "Broken",
+  STATUS_OVERRIDE: "Manual Override",
+  BADGE_SYSTEM: "🛡️ System Auto",
+  BADGE_OVERRIDE: "⚙️ Manual Override",
+  COL_KEY: "Template Key",
+  COL_LABEL: "Display Label",
+  COL_KIND: "Kind",
+  COL_PATH: "Path / Target",
+  COL_STATUS: "Status",
+  COL_ACTIONS: "Actions",
+  NO_ITEMS_TITLE: "No navigation items found",
+  NO_ITEMS_DESC:
+    "Click 'Re-scan / Auto-Repair' to automatically generate default system navigation items.",
+  SUCCESS_RESCAN: "Navigation items rescanned and auto-repaired successfully.",
+  SUCCESS_CREATE: "Navigation item created with manual override.",
+  SUCCESS_UPDATE: "Navigation item updated successfully.",
+  SUCCESS_DELETE: "Navigation item deleted successfully.",
+  CONFIRM_DELETE: "Are you sure you want to delete this navigation template?",
+  MODAL_ADD_TITLE: "Add Custom Navigation Item",
+  MODAL_EDIT_TITLE: "Edit Navigation Item & Override",
+  MODAL_DESC:
+    "Editing an item automatically flags it as a manual override to prevent auto-healing from overwriting your changes.",
+  LABEL_KEY: "Unique Key",
+  LABEL_DISPLAY_LABEL: "Display Label",
+  LABEL_KIND: "Item Kind",
+  LABEL_PATH: "Path / URL Target",
+  LABEL_TEMPLATE_KEY: "Template Type",
+  LABEL_OVERRIDE: "Manual Override (Protect from Auto-Reset)",
+  BTN_CANCEL: "Cancel",
+  BTN_SAVE: "Save & Override",
+  BTN_SAVING: "Saving...",
+  ERROR_LOAD: "Failed to load navigation items.",
+  TRY_AGAIN: "Try Again",
 };

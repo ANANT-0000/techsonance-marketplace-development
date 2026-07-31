@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Star, MessageSquareQuote, ThumbsUp, ChevronDown, User } from 'lucide-react';
 import { fetchReviews } from '@/utils/customerApiClient';
 import { PRODUCT_REVIEW_TEXT } from '@/constants/customerText';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -55,7 +57,7 @@ const RatingBar = ({ label, count, total }: { label: string; count: number; tota
 };
 
 // Avatar initials circle
-const Avatar = ({ name }: { name: string }) => {
+const ReviewAvatar = ({ name, imageUrl }: { name: string, imageUrl?: string }) => {
     const initials = name
         .split(' ')
         .filter(Boolean)
@@ -65,12 +67,15 @@ const Avatar = ({ name }: { name: string }) => {
     // Deterministic pastel hue from name
     const hue = [...name].reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360;
     return (
-        <div
-            className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-white font-bold text-theme-caption select-none"
-            style={{ background: `hsl(${hue},55%,55%)` }}
-        >
-            {initials || <User size={14} />}
-        </div>
+        <Avatar className="w-9 h-9 border border-gray-50 shadow-sm shrink-0">
+            {imageUrl && <AvatarImage src={imageUrl} alt={name} className="object-cover" />}
+            <AvatarFallback
+                className="text-white font-bold text-theme-caption select-none"
+                style={{ background: `hsl(${hue},55%,55%)` }}
+            >
+                {initials || <User size={14} />}
+            </AvatarFallback>
+        </Avatar>
     );
 };
 
@@ -206,7 +211,7 @@ export const ProductReview = ({ productId }: { productId: string }) => {
                                 {/* Top row: avatar, name/date, stars */}
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <Avatar name={fullName} />
+                                        <ReviewAvatar name={fullName} imageUrl={review.user?.profile_picture_url} />
                                         <div className="min-w-0">
                                             <p className="text-theme-body-sm font-bold text-gray-900 capitalize truncate leading-tight">
                                                 {fullName}
@@ -248,16 +253,17 @@ export const ProductReview = ({ productId }: { productId: string }) => {
                         exit={{ opacity: 0 }}
                         className="flex justify-center pt-2"
                     >
-                        <button
+                        <Button
+                            variant="outline"
                             onClick={() => setVisibleCount(c => c + PAGE_SIZE)}
-                            className="flex items-center gap-2 px-6 py-3 rounded-2xl border-2 border-gray-200 hover:border-gray-900 text-theme-body-sm font-bold text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 group"
+                            className="flex items-center gap-2 px-6 h-12 rounded-2xl border-2 border-gray-200 hover:border-gray-900 text-theme-body-sm font-bold text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-all duration-200 group"
                         >
                             {PRODUCT_REVIEW_TEXT.LOAD_MORE}
                             <ChevronDown
                                 size={15}
                                 className="text-gray-400 group-hover:text-gray-900 group-hover:translate-y-0.5 transition-all"
                             />
-                        </button>
+                        </Button>
                     </motion.div>
                 )}
             </AnimatePresence>

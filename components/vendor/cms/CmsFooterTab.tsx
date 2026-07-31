@@ -1,5 +1,3 @@
-import React from "react";
-import { CmsDataKey } from "@/constants/cms";
 import { CmsSection } from "./Section";
 import { InputField } from "./InputField";
 import { UILabels } from "@/constants/ui-labels";
@@ -34,14 +32,17 @@ export const CmsFooterTab = ({
           />
         }
       >
-        
         {(!data.content || data.content.length === 0) && (
           <div className="flex flex-col items-center justify-center p-12 bg-gray-50/50 border border-dashed border-gray-200 rounded-2xl text-center">
             <div className="w-12 h-12 bg-white shadow-sm border border-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
               <Layers size={20} />
             </div>
-            <h3 className="text-gray-900 font-semibold mb-1">{UiText.NO_FOOTER_COLUMNS_TITLE}</h3>
-            <p className="text-sm text-gray-500 max-w-sm">{UiText.NO_FOOTER_COLUMNS_DESC}</p>
+            <h3 className="text-gray-900 font-semibold mb-1">
+              {UiText.NO_FOOTER_COLUMNS_TITLE}
+            </h3>
+            <p className="text-sm text-gray-500 max-w-sm">
+              {UiText.NO_FOOTER_COLUMNS_DESC}
+            </p>
           </div>
         )}
         {(data.content || []).map((col: any, ci: number) => (

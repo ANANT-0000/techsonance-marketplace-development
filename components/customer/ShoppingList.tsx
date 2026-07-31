@@ -218,7 +218,7 @@ function ShoppingListContent({ styles, collectionSlug }: ShoppingListProps) {
     SHOPPING_LIST_TEXT.SORT_NEWEST;
   return (
     <motion.section
-      className={`w-full ${styles ?? ""}`}
+      className={`w-full relative ${styles ?? ""}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}

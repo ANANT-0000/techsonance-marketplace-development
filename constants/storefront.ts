@@ -61,7 +61,45 @@ export const TRUST_BADGE_DEFAULT = [
     subtitle: "Dedicated help desk",
   },
 ];
+// ─────────────────────────────────────────────────────────────────────────────
+// 1. Configuration & Constants (Zero Hardcoding)
+// ─────────────────────────────────────────────────────────────────────────────
 
+export const TRUST_STRIP_CONFIG = {
+  INFO_ICON_SIZE: 12,
+  ICON_SIZE: 18,
+} as const;
+
+export const DEFAULT_TRUST_BADGES = [
+  {
+    id: "warranty",
+    icon: "warranty",
+    title: "12+3 Months",
+    subtitle: "Warranty",
+    showInfo: true,
+  },
+  {
+    id: "gst",
+    icon: "gst",
+    title: "GST",
+    subtitle: "Billing",
+    showInfo: false,
+  },
+  {
+    id: "delivery",
+    icon: "delivery",
+    title: "Free Express",
+    subtitle: "Delivery",
+    showInfo: false,
+  },
+  {
+    id: "replacement",
+    icon: "replacement",
+    title: "7-day",
+    subtitle: "Replacement",
+    showInfo: false,
+  },
+] as const;
 export const TESTIMONIALS_DEFAULT = [
   {
     name: "Priya S.",

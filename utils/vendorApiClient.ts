@@ -17,6 +17,9 @@ import {
   NavMenuPosition,
   OrderStatus,
   ReturnStatus,
+  type CreateNavItemPayload,
+  type FilterRuleNode,
+  type UpsertNavMenuPayload,
 } from "./Types";
 
 // ==========================================
@@ -2462,72 +2465,6 @@ export const fetchUpdateTaxSlab = async (
 // NAVBAR API ENDPOINTS
 // ==========================================
 
-export type AnnouncementItemType = "text" | "link" | "feature";
-export type DeviceVisibility = "desktop" | "mobile";
-
-export interface AnnouncementItem {
-  id: string;
-  type: AnnouncementItemType;
-  label: string;
-  target_route?: string;
-  feature_key?: string;
-  visible_on?: DeviceVisibility[];
-  is_highlighted?: boolean;
-}
-
-export interface UpsertNavMenuPayload {
-  logo_src?: string;
-  logo_alt?: string;
-  logo_href?: string;
-  logo_alignment?: NavMenuLogoAlignment;
-  position?: NavMenuPosition;
-  show_shadow?: boolean;
-  show_border?: boolean;
-  search_visible?: boolean;
-  search_placeholder?: string;
-  search_endpoint?: string;
-  show_account?: boolean;
-  show_wishlist?: boolean;
-  show_cart?: boolean;
-
-  // Announcement Bar
-  announcement_visible?: boolean;
-  announcement_items_left?: AnnouncementItem[];
-  announcement_items_right?: AnnouncementItem[];
-  announcement_bg_color?: string;
-  announcement_text_color?: string;
-  announcement_text_size?: string;
-  announcement_mobile_alignment?: string;
-}
-
-export interface NavItemMetaPayload {
-  display_type?: NavItemDisplayType;
-  show_category_icons?: boolean;
-  parent_category_id?: string;
-  col_type?: NavItemColType;
-  col_title?: string;
-  promo_image_url?: string;
-  promo_title?: string;
-  promo_subtitle?: string;
-  promo_cta_href?: string;
-  icon_url?: string;
-  route_key?: string;
-  product_ids?: string[];
-}
-export interface CreateNavItemPayload {
-  menu_id: string;
-  parent_id?: string;
-  label: string;
-  nav_item_id?: string | null;
-  slug?: string;
-  config?: any;
-  has_mega_menu: boolean;
-  sort_order?: number;
-  root_category_id?: string | null;
-  meta?: NavItemMetaPayload;
-  layout_type?: NavLayoutType;
-}
-
 /** GET /v1/navbar/templates */
 export const fetchNavbarTemplates = async (token: string) => {
   try {
@@ -2555,18 +2492,22 @@ export const fetchProductFilters = async (token: string, domain: string) => {
         Authorization: `Bearer ${token}`,
         "company-domain": domain,
       },
-      next: { revalidate: 0 },
+      cache: "no-store",
     });
-    if (!res.ok) return { success: false };
-    const data = await res.json();
-    return { success: true, data };
-  } catch {
-    return { success: false, message: "Network error" };
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      return { success: false, message: errorData?.message || "Network error" };
+    }
+
+    return await res.json();
+  } catch (e) {
+    return { success: false, message: "Network error" + e };
   }
 };
 
 export const createProductFilter = async (
-  payload: { name: string; rules: any[] },
+  payload: { name: string; rules: FilterRuleNode[] },
   token: string,
   domain: string,
 ) => {
@@ -2580,9 +2521,13 @@ export const createProductFilter = async (
       },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) return { success: false };
-    const data = await res.json();
-    return { success: true, data };
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      return { success: false, message: errorData?.message || "Network error" };
+    }
+
+    return await res.json();
   } catch {
     return { success: false, message: "Network error" };
   }
@@ -2590,7 +2535,7 @@ export const createProductFilter = async (
 
 export const updateProductFilter = async (
   id: string,
-  payload: { name?: string; rules?: any[] },
+  payload: { name?: string; rules?: FilterRuleNode[] },
   token: string,
   domain: string,
 ) => {
@@ -2604,11 +2549,15 @@ export const updateProductFilter = async (
       },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) return { success: false };
-    const data = await res.json();
-    return { success: true, data };
-  } catch {
-    return { success: false, message: "Network error" };
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => null);
+      return { success: false, message: errorData?.message || "Network error" };
+    }
+
+    return await res.json();
+  } catch (e) {
+    return { success: false, message: "Network error" + e };
   }
 };
 
@@ -2668,7 +2617,7 @@ export const fetchNavbarConfig = async (companyId: string) => {
     return null;
   }
 };
-/** PUT /v1/navbar/menu â€” upsert scalar navbar settings */
+/** PUT /v1/navbar/menu — upsert scalar navbar settings */
 export const upsertNavbarMenu = async (
   payload: UpsertNavMenuPayload,
   token: string,
@@ -2685,14 +2634,27 @@ export const upsertNavbarMenu = async (
       },
       body: JSON.stringify(payload),
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        success: false,
+        message:
+          data?.message ||
+          data?.error ||
+          `Error (${res.status}) saving navbar settings`,
+      };
+    }
     revalidatePath("/vendor/cms");
-    return await res.json();
-  } catch {
-    return { success: false, message: "Error saving navbar settings" };
+    return data;
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || "Error saving navbar settings",
+    };
   }
 };
 
-/** POST /v1/navbar/items â€” create an L1 or L2 nav item */
+/** POST /v1/navbar/items — create an L1 or L2 nav item */
 export const createNavbarItem = async (
   payload: CreateNavItemPayload,
   token: string,
@@ -2709,15 +2671,27 @@ export const createNavbarItem = async (
       },
       body: JSON.stringify(payload),
     });
-    revalidatePath("/vendor/cms");
 
-    return await res.json();
-  } catch {
-    return { success: false, message: "Error creating nav item" };
+    // if (!res.ok) {
+    //   return {
+    //     success: false,
+    //     message:
+    //       data?.message ||
+    //       data?.error ||
+    //       `Error (${res.status}) creating nav item`,
+    //   };
+    // }
+    revalidatePath("/vendor/cms");
+    return res.json();
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || "Error creating nav item " + err,
+    };
   }
 };
 
-/** PATCH /v1/navbar/items/:id â€” partial update */
+/** PATCH /v1/navbar/items/:id — partial update */
 export const updateNavbarItem = async (
   id: string,
   payload: Partial<CreateNavItemPayload>,
@@ -2735,11 +2709,14 @@ export const updateNavbarItem = async (
       },
       body: JSON.stringify(payload),
     });
-    revalidatePath("/vendor/cms");
 
-    return await res.json();
-  } catch {
-    return { success: false, message: "Error updating nav item" };
+    revalidatePath("/vendor/cms");
+    return res.json();
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || "Error updating nav item" + err,
+    };
   }
 };
 
@@ -2758,15 +2735,18 @@ export const deleteNavbarItem = async (
         "company-id": companyId || "",
       },
     });
-    revalidatePath("/vendor/cms");
 
-    return await res.json();
-  } catch {
-    return { success: false, message: "Error deleting nav item" };
+    revalidatePath("/vendor/cms");
+    return res.json();
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || "Error deleting nav item" + err,
+    };
   }
 };
 
-/** PUT /v1/navbar/items/reorder â€” bulk sort_order update */
+/** PUT /v1/navbar/items/reorder — bulk sort_order update */
 export const reorderNavbarItems = async (
   items: { id: string; sort_order: number }[],
   token: string,
@@ -2783,11 +2763,23 @@ export const reorderNavbarItems = async (
       },
       body: JSON.stringify({ items }),
     });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      return {
+        success: false,
+        message:
+          data?.message ||
+          data?.error ||
+          `Error (${res.status}) reordering nav items`,
+      };
+    }
     revalidatePath("/vendor/cms");
-    ("navbar");
-    return await res.json();
-  } catch {
-    return { success: false, message: "Error reordering nav items" };
+    return data;
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err?.message || "Error reordering nav items",
+    };
   }
 };
 

@@ -29,7 +29,8 @@ export const INVENTORY_TEXT = {
     },
     NO_ITEMS: "No inventory items found.",
     EMPTY_SUBTITLE: "Your inventory list is currently empty.",
-    EMPTY_SUBTITLE_DETAILED: "Once you add products or sync your warehouse, your stock levels will appear here.",
+    EMPTY_SUBTITLE_DETAILED:
+      "Once you add products or sync your warehouse, your stock levels will appear here.",
     STATUS_OUT: "Out of Stock",
     STATUS_LOW: "Low Stock",
     STATUS_IN: "In Stock",
@@ -81,7 +82,8 @@ export const VENDOR_PROFILE_TEXT = {
 
 export const PROFILE_REMINDER_BANNER_TEXT = {
   TITLE: "Complete Your Vendor Profile",
-  DESCRIPTION: "You're one step away from accepting orders. Please verify your business identity and upload required compliance documents.",
+  DESCRIPTION:
+    "You're one step away from accepting orders. Please verify your business identity and upload required compliance documents.",
   BTN_VERIFY: "Verify Now",
   BTN_DISMISS: "Dismiss",
 };
@@ -599,12 +601,14 @@ export const PRODUCT_FORM_TEXT = {
   MEDIA_GUIDE: {
     TITLE: "Image Guidelines:",
     DESC: "For optimal performance, please upload WebP images under 400KB. Keep the main product centered. We highly recommend converting your images to WebP for lossless quality and faster loading.",
-    IMPORTANT_NOTE: "Important: The first image (marked as #1 Main) will be your primary cover image. The order of images shown here dictates how they appear to buyers.",
+    IMPORTANT_NOTE:
+      "Important: The first image (marked as #1 Main) will be your primary cover image. The order of images shown here dictates how they appear to buyers.",
     BADGE_MAIN: "#1 Main",
     BADGE_OTHER: (index: number) => `#${index}`,
     BROWSE: "Click to browse files",
     LIMITS: "WebP, PNG, JPG, MP4 up to 400KB",
-    MAX_PER_IMAGE: (sizeMB: number) => sizeMB < 1 ? `Max ${sizeMB * 1000}KB / Image` : `Max ${sizeMB}MB / Image`,
+    MAX_PER_IMAGE: (sizeMB: number) =>
+      sizeMB < 1 ? `Max ${sizeMB * 1000}KB / Image` : `Max ${sizeMB}MB / Image`,
     MAX_TOTAL: (sizeMB: number) => `Total ${sizeMB}MB Limit`,
   },
   ERRORS: {
@@ -614,32 +618,65 @@ export const PRODUCT_FORM_TEXT = {
     ATTR_VAL: "Attribute value is required",
     SESSION_EXPIRED: "Your session has expired. Please log in again.",
     SESSION_EXPIRED_SAVE: "Please log in again to save your product.",
-    IMAGE_SIZE_EXCEEDED: (sizeMB: number) => `Each image must be smaller than ${sizeMB}MB.`,
-    TOTAL_IMAGE_SIZE_EXCEEDED: (sizeMB: number, currentMB: string) => `Total images size cannot exceed ${sizeMB}MB. Current total would be ${currentMB}MB.`,
-    PAYLOAD_TOO_LARGE: (sizeMB: number) => `Total image size is too large to send to server. Please keep the total size under ${sizeMB}MB.`,
+    IMAGE_SIZE_EXCEEDED: (sizeMB: number) =>
+      `Each image must be smaller than ${sizeMB}MB.`,
+    TOTAL_IMAGE_SIZE_EXCEEDED: (sizeMB: number, currentMB: string) =>
+      `Total images size cannot exceed ${sizeMB}MB. Current total would be ${currentMB}MB.`,
+    PAYLOAD_TOO_LARGE: (sizeMB: number) =>
+      `Total image size is too large to send to server. Please keep the total size under ${sizeMB}MB.`,
     SAVE_FAILED: "Failed to save product.",
     VALIDATION_FAILED: "Please fix the validation errors in the form.",
     UNEXPECTED_ERROR: "An unexpected error occurred.",
-    MISSING_IMAGES: "Please upload at least one product image and one feature image.",
+    MISSING_IMAGES:
+      "Please upload at least one product image and one feature image.",
   },
   LOGISTICS_FIELDS: [
-    { name: "weight_kg", label: "Weight", placeholder: "e.g. 0.5", unit: "kg", hint: "Gross weight including packaging" },
-    { name: "length_cm", label: "Length", placeholder: "e.g. 25", unit: "cm", hint: "Longest side of the package" },
-    { name: "width_cm", label: "Width", placeholder: "e.g. 15", unit: "cm", hint: "Second longest side" },
-    { name: "height_cm", label: "Height", placeholder: "e.g. 10", unit: "cm", hint: "Shortest side (depth)" },
+    {
+      name: "weight_kg",
+      label: "Weight",
+      placeholder: "e.g. 0.5",
+      unit: "kg",
+      hint: "Gross weight including packaging",
+    },
+    {
+      name: "length_cm",
+      label: "Length",
+      placeholder: "e.g. 25",
+      unit: "cm",
+      hint: "Longest side of the package",
+    },
+    {
+      name: "width_cm",
+      label: "Width",
+      placeholder: "e.g. 15",
+      unit: "cm",
+      hint: "Second longest side",
+    },
+    {
+      name: "height_cm",
+      label: "Height",
+      placeholder: "e.g. 10",
+      unit: "cm",
+      hint: "Shortest side (depth)",
+    },
   ],
   MESSAGES: {
     DRAFT_LOADED: "Loaded draft form data.",
-    DRAFT_SAVED: "Draft saved locally. Redirecting to create required option...",
-    MISSING_OPTIONS_TITLE: "Note: Some required options (Category, Tax Rate, or Warehouse) are not available.",
-    MISSING_OPTIONS_DESC: "Please create them first before proceeding with the product creation.",
+    DRAFT_SAVED:
+      "Draft saved locally. Redirecting to create required option...",
+    MISSING_OPTIONS_TITLE:
+      "Note: Some required options (Category, Tax Rate, or Warehouse) are not available.",
+    MISSING_OPTIONS_DESC:
+      "Please create them first before proceeding with the product creation.",
   },
   EMPTY_STATES: {
     FEATURES_TITLE: "No features added yet",
-    FEATURES_DESC: "Highlight what makes this product stand out — waterproof, eco-friendly, fast charging, etc.",
+    FEATURES_DESC:
+      "Highlight what makes this product stand out — waterproof, eco-friendly, fast charging, etc.",
     FEATURES_BTN: "Add First Feature",
     ATTRIBUTES_TITLE: "No attributes added",
-    ATTRIBUTES_DESC: "Add attributes like Size, Color, or Material to specify the unique details of this variant.",
+    ATTRIBUTES_DESC:
+      "Add attributes like Size, Color, or Material to specify the unique details of this variant.",
     ATTRIBUTES_BTN: "Add First Attribute",
     WAREHOUSE_TITLE: "No warehouses available.",
     WAREHOUSE_BTN: "Create Warehouse",
@@ -649,9 +686,11 @@ export const PRODUCT_FORM_TEXT = {
   },
   FALLBACKS: {
     VERIFYING_TITLE: "Verifying your session...",
-    VERIFYING_DESC: "Please wait a moment while we securely connect to your account.",
+    VERIFYING_DESC:
+      "Please wait a moment while we securely connect to your account.",
     EXPIRED_TITLE: "Your session needs a refresh",
-    EXPIRED_DESC: "For your security, please log in again to continue managing your products.",
+    EXPIRED_DESC:
+      "For your security, please log in again to continue managing your products.",
     LOGIN_BTN: "Log In Again",
   },
 };
@@ -682,7 +721,8 @@ export const PRODUCT_VARIANT_FORM_TEXT = {
     PRICING: "Pricing & Inventory",
     MEDIA: "Variant Images",
     MEDIA_OPTIONAL: "(Optional)",
-    MEDIA_NOTE: "Note: If no images are uploaded, the main product's thumbnail and gallery will be used automatically.",
+    MEDIA_NOTE:
+      "Note: If no images are uploaded, the main product's thumbnail and gallery will be used automatically.",
   },
   LABELS: {
     NAME: "Variant Name",
@@ -710,19 +750,27 @@ export const PRODUCT_VARIANT_FORM_TEXT = {
     SAVE: "Save Variant",
   },
   MEDIA_GUIDE: {
-    LIMITS: "WebP, PNG, JPG, MP4 up to 400KB. Convert formats to WebP for best quality.",
-    ORDER_NOTE: "Image Order: The first image (#1 Main) will be the primary cover image.",
+    LIMITS:
+      "WebP, PNG, JPG, MP4 up to 400KB. Convert formats to WebP for best quality.",
+    ORDER_NOTE:
+      "Image Order: The first image (#1 Main) will be the primary cover image.",
     BADGE_MAIN: "#1 Main",
     BADGE_OTHER: (index: number) => `#${index}`,
-    MAX_PER_IMAGE: (sizeMB: number) => sizeMB < 1 ? `Max ${sizeMB * 1000}KB / Image` : `Max ${sizeMB}MB / Image`,
+    MAX_PER_IMAGE: (sizeMB: number) =>
+      sizeMB < 1 ? `Max ${sizeMB * 1000}KB / Image` : `Max ${sizeMB}MB / Image`,
     MAX_TOTAL: (sizeMB: number) => `Total ${sizeMB}MB Limit`,
   },
   ERRORS: {
-    SESSION_EXPIRED_SAVE: "Your session has expired. Please log in again to save your changes.",
-    PROFILE_MISSING: "Your company profile is missing. Please complete your registration to publish products.",
-    IMAGE_SIZE_EXCEEDED: (sizeMB: number) => `Each image must be smaller than ${sizeMB}MB.`,
-    TOTAL_IMAGE_SIZE_EXCEEDED: (sizeMB: number, currentMB: string) => `Total images size cannot exceed ${sizeMB}MB. Current total would be ${currentMB}MB.`,
-    PAYLOAD_TOO_LARGE: (sizeMB: number) => `Total image size is too large to send to server. Please keep the total size under ${sizeMB}MB.`,
+    SESSION_EXPIRED_SAVE:
+      "Your session has expired. Please log in again to save your changes.",
+    PROFILE_MISSING:
+      "Your company profile is missing. Please complete your registration to publish products.",
+    IMAGE_SIZE_EXCEEDED: (sizeMB: number) =>
+      `Each image must be smaller than ${sizeMB}MB.`,
+    TOTAL_IMAGE_SIZE_EXCEEDED: (sizeMB: number, currentMB: string) =>
+      `Total images size cannot exceed ${sizeMB}MB. Current total would be ${currentMB}MB.`,
+    PAYLOAD_TOO_LARGE: (sizeMB: number) =>
+      `Total image size is too large to send to server. Please keep the total size under ${sizeMB}MB.`,
     SAVE_FAILED: "Failed to save product variant.",
   },
   MESSAGES: {
@@ -731,16 +779,19 @@ export const PRODUCT_VARIANT_FORM_TEXT = {
   },
   EMPTY_STATES: {
     ATTRIBUTES_TITLE: "No attributes added",
-    ATTRIBUTES_DESC: "Add attributes like Size, Color, or Material to specify the unique details of this variant.",
+    ATTRIBUTES_DESC:
+      "Add attributes like Size, Color, or Material to specify the unique details of this variant.",
     ATTRIBUTES_BTN: "Add First Attribute",
     WAREHOUSE_TITLE: "No warehouses available.",
     WAREHOUSE_BTN: "Create Warehouse",
   },
   FALLBACKS: {
     VERIFYING_TITLE: "Verifying your session...",
-    VERIFYING_DESC: "Please wait a moment while we securely connect to your account.",
+    VERIFYING_DESC:
+      "Please wait a moment while we securely connect to your account.",
     EXPIRED_TITLE: "Your session needs a refresh",
-    EXPIRED_DESC: "For your security, please log in again to continue managing your products.",
+    EXPIRED_DESC:
+      "For your security, please log in again to continue managing your products.",
     LOGIN_BTN: "Log In Again",
   },
 };
@@ -786,10 +837,12 @@ export const ANALYSIS_BOARD_TEXT = {
   },
   EMPTY_STATES: {
     SESSION_EXPIRED_TITLE: "Session Expired",
-    SESSION_EXPIRED_DESC: "We need to verify your session. Please log in again to view your analytics.",
+    SESSION_EXPIRED_DESC:
+      "We need to verify your session. Please log in again to view your analytics.",
     SESSION_EXPIRED_BTN: "Log In Again",
     EXPORT_NO_TOKEN: "Session expired. Please log in again to export.",
-    TREND_EMPTY: "Your activity trend will appear here once you start generating sales.",
+    TREND_EMPTY:
+      "Your activity trend will appear here once you start generating sales.",
     NO_DATA: "No Data",
     NO_PRODUCTS_TITLE: "No products sold yet",
     NO_PRODUCTS_DESC: "Your top-selling variants will be listed here.",
@@ -836,6 +889,11 @@ export const BRANDING_TAB_TEXT = {
       key: "categories",
       label: "Shop Categories Grid",
       desc: "Grid layout of shop categories",
+    },
+    {
+      key: "dynamic_sections",
+      label: "Custom Product Rows",
+      desc: "Dynamic blocks configured in the CMS",
     },
     {
       key: "products",
@@ -1358,13 +1416,16 @@ export const FINANCES_TEXT = {
   },
   EMPTY_STATES: {
     SESSION_EXPIRED_TITLE: "Session Expired",
-    SESSION_EXPIRED_DESC: "We need to verify your session. Please log in again to view your finances.",
+    SESSION_EXPIRED_DESC:
+      "We need to verify your session. Please log in again to view your finances.",
     SESSION_EXPIRED_BTN: "Log In Again",
     EXPORT_NO_TOKEN: "Session expired. Please log in again to refresh.",
     NO_TRANSACTIONS_TITLE: "No transactions yet",
-    NO_TRANSACTIONS_DESC: "Your financial ledger and cleared earnings will appear here once orders are processed.",
+    NO_TRANSACTIONS_DESC:
+      "Your financial ledger and cleared earnings will appear here once orders are processed.",
     NO_RECORDS_FILTER_TITLE: "No matches found",
-    NO_RECORDS_FILTER_DESC: "Try adjusting your filters or date range to find what you're looking for.",
+    NO_RECORDS_FILTER_DESC:
+      "Try adjusting your filters or date range to find what you're looking for.",
   },
 };
 
@@ -1567,7 +1628,8 @@ export const STOCK_MANAGER_TEXT = {
   },
   TABLE: {
     NO_DATA: "No inventory data matching your filters.",
-    EMPTY_SUBTITLE_DETAILED: "Once you add products or sync your warehouse, your stock levels will appear here.",
+    EMPTY_SUBTITLE_DETAILED:
+      "Once you add products or sync your warehouse, your stock levels will appear here.",
     BTN_ADJUST: "Adjust",
     STATUS_ACTIVE: "Active",
     STATUS_INACTIVE: "Inactive",
@@ -1828,14 +1890,16 @@ export const TAX_PROFILES_TEXT = {
     },
     NO_DATA: "No tax profiles found. Create one to get started.",
     EMPTY_TITLE: "No Tax Profiles Found",
-    EMPTY_DESC: "You haven't set up any tax profiles yet. Create your first tax profile to manage rates efficiently.",
+    EMPTY_DESC:
+      "You haven't set up any tax profiles yet. Create your first tax profile to manage rates efficiently.",
     DEFAULT_BADGE: "DEFAULT",
     STATUS_ACTIVE: "Active",
     ACTION_EDIT: "Edit →",
   },
   ERRORS: {
     SESSION_EXPIRED_TITLE: "Session Expired",
-    SESSION_EXPIRED_DESC: "Your session is missing or has expired. Please log in again to manage your tax profiles.",
+    SESSION_EXPIRED_DESC:
+      "Your session is missing or has expired. Please log in again to manage your tax profiles.",
     GO_TO_LOGIN: "Go to Login",
   },
 };
@@ -1866,7 +1930,8 @@ export const TAX_PROFILE_FORM_TEXT = {
   },
   ERRORS: {
     SESSION_EXPIRED_TITLE: "Session Expired",
-    SESSION_EXPIRED_DESC: "Your session is missing or has expired. Please log in again to manage this tax profile.",
+    SESSION_EXPIRED_DESC:
+      "Your session is missing or has expired. Please log in again to manage this tax profile.",
     GO_TO_LOGIN: "Go to Login",
   },
 };
@@ -1897,13 +1962,15 @@ export const TAX_RATES_TEXT = {
   },
   EMPTY_STATES: {
     NO_DATA_TITLE: "No Tax Rates Configured",
-    NO_DATA_DESC: "You haven't set up any custom tax rules yet. Default rates will apply until you configure them.",
+    NO_DATA_DESC:
+      "You haven't set up any custom tax rules yet. Default rates will apply until you configure them.",
     CREATE_BTN: "Create Your First Tax Rate",
   },
   SESSION: {
     CHECKING: "Checking your session...",
     AUTH_REQUIRED: "Authentication Required",
-    MISSING_LIST: "Your session appears to be missing or has expired. Please log in again to view your tax rates securely.",
+    MISSING_LIST:
+      "Your session appears to be missing or has expired. Please log in again to view your tax rates securely.",
     LOGIN_BTN: "Log in again",
   },
   ALERTS: {
@@ -1922,7 +1989,8 @@ export const TAX_RATES_FORM_TEXT = {
   SESSION: {
     CHECKING: "Checking your session...",
     AUTH_REQUIRED: "Authentication Required",
-    MISSING_FORM: "Your session appears to be missing or has expired. Please log in again to continue.",
+    MISSING_FORM:
+      "Your session appears to be missing or has expired. Please log in again to continue.",
     LOGIN_BTN: "Log in again",
   },
   ALERTS: {
@@ -2345,7 +2413,8 @@ export const PAYMENT_PAGE_STRINGS = {
 };
 export const VENDOR_BILLING_TEXT = {
   PAGE_TITLE: "Billing & Subscription",
-  PAGE_SUBTITLE: "Manage your current plan, check usage, and explore powerful features.",
+  PAGE_SUBTITLE:
+    "Manage your current plan, check usage, and explore powerful features.",
   ALERTS: {
     FETCH_ERROR: "Failed to load subscription details.",
     LOGIN_REQUIRED: "You must be logged in to upgrade.",
@@ -2359,13 +2428,16 @@ export const VENDOR_BILLING_TEXT = {
     STATUS_PREFIX: "Current subscription status: ",
     TRIAL_ENDING: "Trial Ending Soon",
     ACTION_REQUIRED: "Action Required",
-    DAYS_REMAINING: "You have {days} day(s) remaining on your current {type}. Upgrade to avoid interruption.",
+    DAYS_REMAINING:
+      "You have {days} day(s) remaining on your current {type}. Upgrade to avoid interruption.",
     NEEDS_ATTENTION: "Your plan needs attention.",
-    NO_SUBSCRIPTION: "No active subscription found. Please select a plan below.",
+    NO_SUBSCRIPTION:
+      "No active subscription found. Please select a plan below.",
   },
   AVAILABLE_PLANS: {
     SECTION_TITLE: "Choose the Right Plan for You",
-    SECTION_SUBTITLE: "Scale your business with transparent pricing and powerful tools designed for growth.",
+    SECTION_SUBTITLE:
+      "Scale your business with transparent pricing and powerful tools designed for growth.",
     MOST_POPULAR: "Most Popular",
     CURRENT_PLAN: "Current Plan",
     PER_MONTH: "/month",
@@ -2375,14 +2447,16 @@ export const VENDOR_BILLING_TEXT = {
   },
   EMPTY_STATE: {
     TITLE: "No Plans Available",
-    MESSAGE: "There are currently no subscription plans available to choose from. Please check back later or contact support.",
+    MESSAGE:
+      "There are currently no subscription plans available to choose from. Please check back later or contact support.",
   },
   MODAL: {
     TITLE: "Confirm Plan Change",
     DESC_PREFIX: "You are about to switch to the",
     DESC_SUFFIX: "plan.",
     NEW_PRICE: "New Monthly Price:",
-    WARNING: "By confirming, your account features and limits will be updated immediately to match the new plan.",
+    WARNING:
+      "By confirming, your account features and limits will be updated immediately to match the new plan.",
     CANCEL: "Cancel",
     CONFIRM: "Confirm & Upgrade",
     PROCESSING: "Processing...",
@@ -2390,5 +2464,213 @@ export const VENDOR_BILLING_TEXT = {
   FORMATTING: {
     CUSTOM: "Custom",
     FREE: "Free",
-  }
+  },
+};
+
+export const CMS_SAVE_BTN_TEXT = {
+  SAVING: "Saving…",
+  SAVE: "Save",
+};
+
+export const CMS_CATEGORY_PICKER_TEXT = {
+  SEARCH_PLACEHOLDER: "Search categories…",
+  ALL_ACTIVE: "— All active categories —",
+  SHOWING_FIRST: (display: number, total: number) =>
+    `Showing first ${display} of ${total} categories. Refine your search to find more.`,
+  NO_MATCH: (query: string) => `No categories match "${query}".`,
+  UNKNOWN: "Unknown",
+};
+
+export const CMS_L2_EDITOR_TEXT = {
+  UNNAMED_COLUMN: "Unnamed Column",
+  NEW_COLUMN: "New Column",
+  SUBCATEGORY_LINKS: "Subcategory Links",
+  BRAND_LINKS: "Brand Links",
+  PROMOTION_BANNER: "Promotion Banner",
+  MANUAL_PRODUCT_PICKS: "Manual Product Picks",
+  DELETE_CONFIRM: (label: string) => `Delete column "${label}"?`,
+  COLUMN_HEADING: "Column Heading",
+  COLUMN_TYPE: "Column Type",
+  SOURCE_CATEGORY: "Source Category (auto-fills its subcategories)",
+  NO_CATEGORY: "— No category (manual links) —",
+  PRODUCTS_IN_COLUMN: "Products in this column",
+  NO_ACTIVE_PRODUCTS: "No active products yet",
+  PRODUCTS_HINT:
+    "Once you add products to your store, they'll show up here to pick from.",
+  PROMO_IMAGE: "Promo Image",
+  PROMO_TITLE: "Promo Title",
+  CTA_LABEL: "CTA Label (e.g. Shop Now)",
+  PROMO_SUBTITLE: "Promo Subtitle",
+  SAVE_COLUMN: "Save Column",
+};
+
+export const CMS_L1_EDITOR_TEXT = {
+  UNNAMED_ITEM: "Unnamed Item",
+  DELETE_CONFIRM: (label: string) =>
+    `Delete "${label}"? All mega-menu columns will also be removed.`,
+  LAYOUTS: {
+    SIMPLE: "Simple Link",
+    SIMPLE_DESC: "A plain navigation link. Optionally add a mega-menu below.",
+    DIRECTORY: "Category Directory",
+    DIRECTORY_DESC:
+      "Auto-generates a full category tree from your selected root category.",
+    GRID: "Category Grid",
+    GRID_DESC:
+      "Auto-generates a visual grid layout from your selected root category.",
+  },
+  NAV_LABEL: "Navigation Label",
+  NAV_HINT: "This is the text shown in the navbar.",
+  STANDARD_PAGE: "Standard Page",
+  DYNAMIC_COLLECTION: "Dynamic Collection",
+  DESTINATION: "Destination",
+  NAV_DESTINATION: "Navigation Destination",
+  PRODUCT_FILTER_RULE: "Product Filter Rule",
+  WEB_ADDRESS_NAME: "Web Address Link Name",
+  WEB_ADDRESS_HINT:
+    "This creates a unique web address for your collection (e.g. yourstore.com/store/summer-sale). Use dashes instead of spaces.",
+  MENU_STYLE: "Menu Style",
+  ROOT_CAT_TITLE: "Root Category (Optional)",
+  ROOT_CAT_DESC:
+    "Select a root category to restrict the menu to a specific branch. If none is selected, the menu will auto-generate from all top-level parent categories.",
+  ROOT_CAT_WARNING:
+    "The previously selected root category no longer exists or has been deleted. Please select a new one.",
+  ROOT_CAT_LABEL: "Root Category",
+  ENABLE_MEGA_MENU: "Enable Mega-Menu Panel",
+  MEGA_MENU_DESC: "Adds a dropdown panel with curated columns below this link.",
+  SAVE_LINK: "Save Link",
+  MEGA_MENU_COLS: (count: number) => `Mega Menu Columns (${count})`,
+  ADDING: "Adding…",
+  ADD_COLUMN: "Add Column",
+  NO_COLS_YET: "No columns yet — add your first mega-menu column above",
+  CREATE_FAILED: "Column was not created — please retry.",
+  NEW_COLUMN: "New Column",
+  NEW_LINK: "New Link",
+  LINK_CREATE_FAILED: "Link was not created — please retry.",
+};
+
+export const CMS_NAVBAR_TAB_TEXT = {
+  NO_ITEMS: "No items",
+  REQ_SAVE_SETTINGS: "Save your settings first to unlock navigation links.",
+  SAVE_SETTINGS: "Save Settings",
+  SAVE_SUCCESS: "Navbar settings saved successfully.",
+  SAVE_FAILED: "Failed to save settings",
+  LOGO_SAVED: "Logo saved.",
+  LOGO_BRANDING: "Logo & Branding",
+  LOGO_IMAGE: "Logo Image",
+  LOGO_ALT: "Logo Alt Text",
+  LOGO_ALIGN: "Logo Alignment",
+  LINKS_ALIGN: "Links Alignment",
+  ALIGN_LEFT: "Left",
+  ALIGN_CENTER: "Center",
+  ALIGN_RIGHT: "Right",
+  NAV_BEHAVIOR: "Navbar Behavior",
+  SCROLL_BEHAVIOR: "Scroll Behavior",
+  STICKY: "Sticky (follows scroll)",
+  STATIC: "Static (stays at top)",
+  SHOW_SHADOW: "Show drop-shadow",
+  SHOW_BORDER: "Show bottom border",
+  SEARCH_BAR: "Search Bar",
+  SHOW_SEARCH: "Show search bar",
+  PLACEHOLDER_TEXT: "Placeholder Text",
+  ANNOUNCEMENT_BAR: "Announcement Bar (Top)",
+  SHOW_ANNOUNCEMENT: "Show announcement bar",
+  LEFT_ITEMS: "Left Items",
+  RIGHT_ITEMS: "Right Items",
+  BG_COLOR: "Background Color",
+  TEXT_COLOR: "Text Color",
+  TEXT_SIZE: "Text Size",
+  TEXT_SIZE_XS: "Extra Small",
+  TEXT_SIZE_SM: "Small (Default)",
+  TEXT_SIZE_MD: "Medium",
+  TEXT_SIZE_LG: "Large",
+  MOBILE_ALIGN: "Mobile Alignment",
+  ALIGN_LEFT_OPT: "Left Aligned",
+  ALIGN_CENTER_OPT: "Center Aligned (Default)",
+  ALIGN_RIGHT_OPT: "Right Aligned",
+  NAV_LINKS: "Navigation Links",
+  ADD_LINK: "Add Link",
+  NO_LINKS: "No links added yet. Click 'Add Link' to build your navbar.",
+  TYPES: {
+    TEXT: "Text",
+    LINK: "Link",
+    FEATURE: "Interactive Feature",
+  },
+  SELECT_ROUTE: "-- Select Route --",
+  SELECT_FEATURE: "-- Select Feature --",
+  SHOW_DESKTOP: "Show on Desktop",
+  SHOW_MOBILE: "Show on Mobile",
+  HIGHLIGHT: "Highlight",
+  NEW_ITEM: "New Item",
+  UTILITY_ICONS: "Utility Icons (right side)",
+  ACCOUNT: "Account",
+  WISHLIST: "Wishlist",
+  CART: "Cart",
+  EMPTY_NAV_LINKS_TITLE: "Save your settings to unlock navigation links",
+  EMPTY_NAV_LINKS_DESC:
+    "Once you save your initial settings, you can start building your navigation structure.",
+  NO_LINKS_TITLE: "No navigation links yet",
+  NO_LINKS_SUBTITLE:
+    "Add your first link with the button above to start building your menu.",
+};
+
+export const CMS_FILTERS_TAB_TEXT = {
+  AND: "AND (All match)",
+  OR: "OR (Any match)",
+  ADD_RULE: "+ Add Rule",
+  ADD_GROUP: "+ Add Group",
+  NO_CATS:
+    "No categories found for this store yet. Add products with categories first.",
+  SELECT_CAT: "Select Category...",
+  DISCOUNT_HINT: "Automatically evaluates compare_at_price > base_price",
+  DAYS: "days",
+  VALUE_PH: "Value...",
+  FIELDS: {
+    CATEGORY: "Category",
+    PRICE: "Price",
+    DATE: "Date Added/Published",
+    DISCOUNT: "Discount / On Sale",
+    SEARCH: "Search (Title)",
+  },
+  OPS: {
+    IN: "In List (Any)",
+    EQ: "Exactly Matches",
+    LT: "Less Than (<)",
+    LTE: "Less or Equal (≤)",
+    GT: "Greater Than (>)",
+    GTE: "Greater or Equal (≥)",
+    EQUALS: "Equals (=)",
+    CONTAINS: "Contains",
+    WITHIN: "Within Last",
+    OLDER: "Older Than",
+  },
+  EDIT_FILTER: "Edit Filter",
+  CREATE_FILTER: "Create New Filter",
+  CANCEL: "Cancel",
+  SAVING: "Saving…",
+  SAVE: "Save Filter",
+  FILTER_NAME: "Filter Name",
+  NAME_PH: "e.g. Summer Sale, Under $50...",
+  TREE: "Filter Rules Tree",
+  SAVED_FILTERS: "Saved Filters",
+  SAVED_DESC: "Create reusable filter rules to attach to Navbar Collections.",
+  CREATE: "Create Filter",
+  LOAD_FAIL:
+    "We couldn't load your filters. Check your connection and try again.",
+  TRY_AGAIN: "Try again",
+  NO_FILTERS: "No filters yet",
+  NO_FILTERS_DESC:
+    "You haven't created any custom product filters yet. Build one to power a dynamic collection in your navbar.",
+  FIRST_FILTER: "Create your first filter",
+  RULE: "Rule",
+  RULES: "Rules",
+  PRESET: "Platform Preset",
+  ERR_LOAD: "Failed to load product filters.",
+  ERR_NAME: "Filter name is required.",
+  ERR_DEL: "Failed to delete filter.",
+  ERR_SAVE: "Failed to save filter.",
+  ERR_GENERIC: "An error occurred while saving.",
+  DEL_CONFIRM: "Are you sure you want to delete this filter?",
+  DEL_SUCCESS: "Filter deleted successfully.",
+  SAVE_SUCCESS: "Filter saved successfully!",
+  NEW_FILTER: "New Filter",
 };

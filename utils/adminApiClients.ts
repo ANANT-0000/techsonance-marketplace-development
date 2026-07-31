@@ -1,9 +1,11 @@
 "use server";
 import { ADMIN_BASE_URL, BASE_API_URL } from "@/constants";
-import { authToken } from "./authToken";
 import { revalidatePath } from "next/cache";
-import AxiosAPI from "@/lib/axios";
 import { getCompanyDomain } from "@/lib/get-domain";
+import type {
+  CreateNavTemplatePayload,
+  UpdateNavTemplatePayload,
+} from "@/utils/Types";
 
 export const fetchRoles = async (token: string) => {
   const response = await fetch(`${BASE_API_URL}/v1/roles`, {
@@ -473,6 +475,124 @@ export const deleteSiteMap = async (id: string, token: string) => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
       throw new Error(errorData?.message || "Failed to delete site map");
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const fetchNavTemplates = async (token: string) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/navbar/templates`, {
+      method: "GET",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch navigation templates");
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const rescanNavTemplates = async (token: string) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/navbar/templates/rescan`, {
+      method: "POST",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        errorData?.message || "Failed to rescan navigation templates",
+      );
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const createNavTemplate = async (
+  payload: CreateNavTemplatePayload,
+  token: string,
+) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/navbar/templates`, {
+      method: "POST",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        errorData?.message || "Failed to create navigation template",
+      );
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateNavTemplate = async (
+  id: string,
+  payload: UpdateNavTemplatePayload,
+  token: string,
+) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/navbar/templates/${id}`, {
+      method: "PATCH",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        errorData?.message || "Failed to update navigation template",
+      );
+    }
+    return await response.json();
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteNavTemplate = async (id: string, token: string) => {
+  try {
+    const domain = await getCompanyDomain();
+    const response = await fetch(`${BASE_API_URL}/v1/navbar/templates/${id}`, {
+      method: "DELETE",
+      headers: {
+        "company-domain": domain,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      throw new Error(
+        errorData?.message || "Failed to delete navigation template",
+      );
     }
     return await response.json();
   } catch (error) {

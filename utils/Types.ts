@@ -4,6 +4,7 @@ import {
 } from "@/components/vendor/category/CategoryManager";
 import type { LucideIcon } from "lucide-react";
 import type { VendorRegisterSchema } from "./validation";
+
 export enum UserStatus {
   ACTIVE = "active",
   INACTIVE = "inactive",
@@ -78,10 +79,13 @@ export enum ReturnReplaceMode {
   BOTH = "both", // Customer can choose return OR replacement
 }
 
-export interface FilterRule {
-  type: FilterRuleType;
-  operator: FilterRuleOperator;
-  value: string | number | string[] | number[];
+export interface FilterRuleNode {
+  type: "group" | "rule";
+  operator?: "AND" | "OR";
+  children?: FilterRuleNode[];
+  field?: FilterRuleType | string;
+  condition?: FilterRuleOperator;
+  value?: any;
 }
 
 /**
@@ -1431,6 +1435,11 @@ export enum NavMenuLogoAlignment {
   LEFT = "left",
   CENTER = "center",
 }
+export enum NavMenuLinksAlignment {
+  LEFT = "left",
+  CENTER = "center",
+  RIGHT = "right",
+}
 export enum NavMenuType {
   SIMPLE = "simple",
   MEGA = "mega",
@@ -1530,10 +1539,6 @@ export interface L1NavItem {
   root_category_id?: string | null;
   isEmptyTree?: boolean;
 }
-
-export type AnnouncementItemType = "text" | "link" | "feature";
-export type DeviceVisibility = "desktop" | "mobile";
-
 export interface AnnouncementItem {
   id: string;
   type: AnnouncementItemType;
@@ -1555,6 +1560,7 @@ export interface L1NavbarPayload {
     position: NavMenuPosition;
     showBottomBorder: boolean;
     showShadow: boolean;
+    linksAlignment?: NavMenuLinksAlignment;
   };
   searchBar: {
     isVisible: boolean;
@@ -1589,7 +1595,23 @@ export interface SiteMap {
   default_query_param: string | null;
   is_system?: boolean;
 }
-
+export interface L1Item {
+  id: string;
+  label: string;
+  href: string;
+  item_type: NavItemType;
+  category_id?: string | null;
+  has_mega_menu: boolean;
+  sort_order: number;
+  meta: NavItemMetaPayload;
+  megaMenuColumns: L2Column[];
+  layout_type?: NavLayoutType;
+  nav_item_id?: string | null;
+  slug?: string | null;
+  config?: any;
+  target_route?: string | null;
+  root_category_id?: string | null;
+}
 export interface NavLinkItem {
   id: string;
   label: string;
@@ -1597,6 +1619,110 @@ export interface NavLinkItem {
   iconUrl?: string | null;
   categoryId?: string | null;
   children: NavLinkItem[];
+}
+export interface L2Column {
+  id: string;
+  label: string;
+  href: string;
+  sort_order: number;
+  meta: NavItemMetaPayload;
+  category_id?: string | null;
+  item_type?: NavItemType;
+}
+
+export type AnnouncementItemType = "text" | "link" | "feature";
+export type DeviceVisibility = "desktop" | "mobile";
+
+export interface AnnouncementItem {
+  id: string;
+  type: AnnouncementItemType;
+  label: string;
+  target_route?: string;
+  feature_key?: string;
+  visible_on?: DeviceVisibility[];
+  is_highlighted?: boolean;
+}
+
+export interface UpsertNavMenuPayload {
+  logo_src?: string;
+  logo_alt?: string;
+  logo_href?: string;
+  logo_alignment?: NavMenuLogoAlignment;
+  links_alignment?: NavMenuLinksAlignment;
+  position?: NavMenuPosition;
+  show_shadow?: boolean;
+  show_border?: boolean;
+  search_visible?: boolean;
+  search_placeholder?: string;
+  search_endpoint?: string;
+  show_account?: boolean;
+  show_wishlist?: boolean;
+  show_cart?: boolean;
+
+  // Announcement Bar
+  announcement_visible?: boolean;
+  announcement_items_left?: AnnouncementItem[];
+  announcement_items_right?: AnnouncementItem[];
+  announcement_bg_color?: string;
+  announcement_text_color?: string;
+  announcement_text_size?: string;
+  announcement_mobile_alignment?: string;
+}
+
+export interface NavItemMetaPayload {
+  display_type?: NavItemDisplayType;
+  show_category_icons?: boolean;
+  parent_category_id?: string;
+  col_type?: NavItemColType;
+  col_title?: string;
+  promo_image_url?: string;
+  promo_title?: string;
+  promo_subtitle?: string;
+  promo_cta_href?: string;
+  icon_url?: string;
+  route_key?: string;
+  product_ids?: string[];
+}
+export interface CreateNavItemPayload {
+  menu_id: string;
+  parent_id?: string;
+  label: string;
+  nav_item_id?: string | null;
+  slug?: string;
+  config?: { filter_id?: string; [key: string]: unknown };
+  has_mega_menu: boolean;
+  sort_order?: number;
+  root_category_id?: string | null;
+  meta?: NavItemMetaPayload;
+  layout_type?: NavLayoutType;
+  category_id?: string | null;
+}
+export interface NavbarTemplate {
+  id: string;
+  key: string;
+  label: string;
+  base_path: string;
+  template_key?: string;
+  kind?: string;
+}
+
+export interface ProductFilter {
+  id: string;
+  name: string;
+}
+
+export interface NavbarData {
+  settings: UpsertNavMenuPayload;
+  menu_id: string | null;
+  navigationItems: L1Item[];
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+export interface CatOption {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
 }
 
 export interface PromotionData {
@@ -1906,8 +2032,10 @@ export interface LandingThemeConfig {
 export enum FilterRuleType {
   CATEGORY = "category",
   PRICE = "price",
-  BRAND = "brand",
+  CREATED_AT = "created_at",
+  DISCOUNT = "discount",
   SEARCH = "search",
+  ON_SALE = "on_sale",
 }
 
 export enum FilterRuleOperator {
@@ -1918,12 +2046,8 @@ export enum FilterRuleOperator {
   GT = "gt",
   GTE = "gte",
   CONTAINS = "contains",
-}
-
-export interface FilterRule {
-  type: FilterRuleType;
-  operator: FilterRuleOperator;
-  value: string | number | string[] | number[];
+  WITHIN_DAYS = "within_days",
+  OLDER_THAN_DAYS = "older_than_days",
 }
 export interface FieldOption {
   label: string;
@@ -2253,6 +2377,51 @@ export enum AsyncStatus {
   LOADING = "loading",
   SUCCESS = "success",
   ERROR = "error",
+}
+
+export enum NavTemplateKindEnum {
+  SYSTEM_ROUTE = "system_route",
+  DYNAMIC_TEMPLATE = "dynamic_template",
+}
+
+export interface NavTemplateItemConfig {
+  manual_override?: boolean;
+  is_pinned?: boolean;
+  is_hidden?: boolean;
+  [key: string]: unknown;
+}
+
+export interface NavTemplateItem {
+  id: string;
+  kind: NavTemplateKindEnum;
+  key: string;
+  label: string;
+  path: string | null;
+  template_key: string | null;
+  config_schema: NavTemplateItemConfig | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateNavTemplatePayload {
+  kind: NavTemplateKindEnum;
+  key: string;
+  label: string;
+  path?: string | null;
+  template_key?: string | null;
+  config_schema?: NavTemplateItemConfig;
+}
+
+export interface UpdateNavTemplatePayload {
+  kind?: NavTemplateKindEnum;
+  key?: string;
+  label?: string;
+  path?: string | null;
+  template_key?: string | null;
+  manual_override?: boolean;
+  is_pinned?: boolean;
+  is_hidden?: boolean;
+  config_schema?: NavTemplateItemConfig;
 }
 
 export interface HomeCategories {

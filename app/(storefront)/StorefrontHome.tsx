@@ -9,9 +9,10 @@ import { ShoppableLookbook } from "@/components/customer/homepage/ShoppableLookb
 import { ScarcityBlock } from "@/components/customer/homepage/ScarcityBlock";
 import { TestimonialSlider } from "@/components/customer/homepage/TestimonialSlider";
 import { CuratedDiscovery } from "@/components/customer/homepage/CuratedDiscovery";
+import { DynamicVendorSection } from "@/components/customer/homepage/DynamicVendorSection";
 import AxiosAPI from "@/lib/axios";
 
-import { LayoutSection, CmsDataKey } from "@/constants/cms";
+import { LayoutSection, CmsDataKey } from "@/constants";
 import { STOREFRONT_HOME_TEXT } from "@/constants/customerText";
 
 import {
@@ -110,15 +111,33 @@ export default function Home() {
   } = useHomepageData();
   const { themeData } = useThemeData();
 
-  const layout: string[] = themeData?.homepage_layout || [
+  let layout: string[] = themeData?.homepage_layout || [
     LayoutSection.HERO,
+    LayoutSection.TRUST_BADGES,
     LayoutSection.CATEGORIES,
+    LayoutSection.DYNAMIC_SECTIONS,
     LayoutSection.NEW_ARRIVALS,
+    LayoutSection.LOOKBOOK,
     LayoutSection.PROMO,
+    LayoutSection.SCARCITY,
     LayoutSection.NEWSLETTER,
     LayoutSection.CURATED,
     LayoutSection.SOCIAL_PROOF,
   ];
+
+  // Auto-inject DYNAMIC_SECTIONS for vendors who saved their layout before this feature existed
+  if (!layout.includes(LayoutSection.DYNAMIC_SECTIONS)) {
+    const catIndex = layout.indexOf(LayoutSection.CATEGORIES);
+    if (catIndex > -1) {
+      layout = [
+        ...layout.slice(0, catIndex + 1),
+        LayoutSection.DYNAMIC_SECTIONS,
+        ...layout.slice(catIndex + 1),
+      ];
+    } else {
+      layout = [...layout, LayoutSection.DYNAMIC_SECTIONS];
+    }
+  }
 
   const [products, setProducts] = useState<any[]>([]);
   const [newArrivals, setNewArrivals] = useState<any[]>([]);
@@ -182,6 +201,14 @@ export default function Home() {
         );
 
       case LayoutSection.LOOKBOOK:
+        if (isLoading) {
+          return (
+            <div
+              key={LayoutSection.LOOKBOOK}
+              className="w-full h-[500px] bg-slate-50 animate-pulse rounded-3xl mx-auto max-w-screen-xl my-16"
+            />
+          );
+        }
         // ShoppableLookbook renders IMAGE_PLACEHOLDER when no image is configured
         return (
           <ShoppableLookbook
@@ -241,18 +268,6 @@ export default function Home() {
           />
         );
       }
-
-      case LayoutSection.SOCIAL_PROOF:
-        // TestimonialSlider falls back to TESTIMONIALS_SLIDER_DEFAULT when no CMS testimonials
-        return (
-          <TestimonialSlider
-            key={LayoutSection.SOCIAL_PROOF}
-            title={getField(CmsDataKey.SOCIAL_PROOF_TITLE)}
-            eyebrow={getField(CmsDataKey.SOCIAL_PROOF_EYEBROW)}
-            testimonials={getField(CmsDataKey.SOCIAL_PROOF_TESTIMONIALS)}
-            badges={getField(CmsDataKey.SOCIAL_PROOF_BADGES)}
-          />
-        );
 
       case LayoutSection.CURATED:
         return (
@@ -469,6 +484,19 @@ export default function Home() {
           />
         );
 
+      case LayoutSection.DYNAMIC_SECTIONS: {
+        const sections = getField(CmsDataKey.DYNAMIC_SECTIONS) as any[];
+        if (!sections || !Array.isArray(sections) || sections.length === 0)
+          return null;
+        return (
+          <div key={LayoutSection.DYNAMIC_SECTIONS} className="w-full">
+            {sections.map((sec, i) => (
+              <DynamicVendorSection key={i} config={sec} />
+            ))}
+          </div>
+        );
+      }
+
       default:
         return null;
     }
@@ -501,6 +529,14 @@ export default function Home() {
         );
 
       case LayoutSection.LOOKBOOK:
+        if (isLoading) {
+          return (
+            <div
+              key={`m-${LayoutSection.LOOKBOOK}`}
+              className="w-full h-[400px] bg-slate-50 animate-pulse rounded-3xl mx-4 my-8"
+            />
+          );
+        }
         // ShoppableLookbook renders IMAGE_PLACEHOLDER when no image is configured
         return (
           <ShoppableLookbook
@@ -803,6 +839,19 @@ export default function Home() {
           />
         );
 
+      case LayoutSection.DYNAMIC_SECTIONS: {
+        const sections = getField(CmsDataKey.DYNAMIC_SECTIONS) as any[];
+        if (!sections || !Array.isArray(sections) || sections.length === 0)
+          return null;
+        return (
+          <div key={`m-${LayoutSection.DYNAMIC_SECTIONS}`} className="w-full">
+            {sections.map((sec, i) => (
+              <DynamicVendorSection key={i} config={sec} />
+            ))}
+          </div>
+        );
+      }
+
       default:
         return null;
     }
@@ -816,12 +865,6 @@ export default function Home() {
       {/* ── DESKTOP ─────────────────────────────────────────────────────────── */}
       <div className="hidden lg:block">
         {layout.map((key) => renderDesktop(key))}
-
-        {/* Always-rendered supplementary sections (only if not already placed via layout key) */}
-        {!layout.includes("social_proof") && (
-          // TestimonialsDesktop falls back to TESTIMONIALS_DEFAULT internally
-          <TestimonialsDesktop getField={getField} />
-        )}
         {/* BrandHighlight always renders — falls back to text-only layout when no image */}
         <BrandHighlight getField={getField} />
       </div>

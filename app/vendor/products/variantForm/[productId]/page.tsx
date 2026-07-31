@@ -7,6 +7,7 @@ import { fetchProduct } from "@/utils/commonAPiClient";
 import { fetchVendorWarehouse } from "@/utils/vendorApiClient";
 import { redirect, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useVendorSession } from "@/hooks/useVendorSession";
 import { VEDNOR_LOGIN_PATH, VEDNOR_REGISTER_PATH } from "@/constants";
 import { SessionErrorCard } from "@/components/vendor/SessionErrorCard";
 
@@ -63,15 +64,7 @@ const getWarehouseOptions = async ({
 import { useAppSelector } from "@/hooks/reduxHooks";
 
 export default function ProductVariantFormPage() {
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setCompanyId(getClientCompanyId());
-    setToken(authToken());
-    setIsMounted(true);
-  }, []);
+  const { companyId, token, isMounted } = useVendorSession();
 
   const { productId } = useParams<{ productId: string }>();
   const { user } = useAppSelector((state) => state.auth);
@@ -102,8 +95,10 @@ export default function ProductVariantFormPage() {
   }
 
   return (
-    <main className="min-h-screen max-h-screen overflow-y-scroll py-8 px-4 w-full mx-auto bg-slate-50/30">
+    <main className="min-h-screen max-h-screen overflow-y-scroll overflow-x-hidden max-w-[100vw] py-8 px-4 w-full mx-auto bg-slate-50/30">
       <ProductVariantForm
+        companyId={companyId}
+        token={token}
         vendorId={vendorId}
         productDetails={
           productDetails ?? {

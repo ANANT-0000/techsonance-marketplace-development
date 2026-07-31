@@ -50,11 +50,24 @@ export function ShoppableLookbook({
 }: ShoppableLookbookProps) {
   const displayTitle = title ?? LOOKBOOK_DEFAULTS.title;
   const displaySubtitle = subtitle ?? LOOKBOOK_DEFAULTS.subtitle;
-  const currentHotspots = (
+  // Guard: if the backend returned a stale JSON string instead of a parsed
+  // array (old cache paths can produce this), parse it safely before use.
+
+  const rawHotspots =
     hotspots !== undefined && hotspots !== null
       ? hotspots
-      : LOOKBOOK_DEFAULT_HOTSPOTS
-  ) as LookbookHotspot[];
+      : LOOKBOOK_DEFAULT_HOTSPOTS;
+  const currentHotspots: LookbookHotspot[] = Array.isArray(rawHotspots)
+    ? rawHotspots
+    : typeof rawHotspots === "string"
+      ? (() => {
+          try {
+            return JSON.parse(rawHotspots);
+          } catch {
+            return [];
+          }
+        })()
+      : [];
 
   // Derive bg from image if no CMS color provided
   const { solidBg: imageDerivedBg } = useImageColors(image_url, {
@@ -66,8 +79,14 @@ export function ShoppableLookbook({
     null,
   );
   const containerRef = useRef<HTMLDivElement>(null);
-  const [resolvedProducts, setResolvedProducts] = useState<Record<string, any>>(
-    {},
+  const [resolvedProducts, setResolvedProducts] = useState<
+    Record<string, object>
+  >({});
+  const [failedProductIds, setFailedProductIds] = useState<Set<string>>(
+    new Set(),
+  );
+  const [fetchingProductIds, setFetchingProductIds] = useState<Set<string>>(
+    new Set(),
   );
 
   // Close popover when clicking outside
@@ -93,27 +112,33 @@ export function ShoppableLookbook({
     if (productIds.length === 0) return;
 
     let active = true;
+    setFetchingProductIds(new Set(productIds));
 
     const fetchAll = async () => {
       const { fetchProduct } = await import("@/utils/commonAPiClient");
-      const fetched: Record<string, any> = {};
+      const fetched: Record<string, object> = {};
+      const failed = new Set<string>();
 
       await Promise.all(
         productIds.map(async (id) => {
           try {
             const res = await fetchProduct(id);
             const product = res?.data ?? res;
-            if (product) {
+            if (product && typeof product === "object" && "id" in product) {
               fetched[id] = product;
+            } else {
+              failed.add(id);
             }
-          } catch (err) {
-            // Ignore failure
+          } catch {
+            failed.add(id);
           }
         }),
       );
 
       if (active) {
         setResolvedProducts(fetched);
+        setFailedProductIds(failed);
+        setFetchingProductIds(new Set());
       }
     };
 
@@ -124,13 +149,50 @@ export function ShoppableLookbook({
     };
   }, [currentHotspots]);
 
+  useEffect(() => {
+    const fullyResolvedHotspots = currentHotspots.map((spot) => {
+      const pId = spot.product_id || spot.productId;
+      const product = pId ? (resolvedProducts[pId] as any) : null;
+      const isFetching = !!pId && fetchingProductIds.has(pId);
+      const hasFailed = !!pId && failedProductIds.has(pId);
+      const useManualData = !pId || hasFailed;
+
+      return {
+        originalSpot: spot,
+        pId,
+        productData: product,
+        isFetching,
+        hasFailed,
+        useManualData,
+        computedName: product ? product.name || spot.name : spot.name,
+        computedDescription: product ? product.description : spot.description,
+        computedPrice: product
+          ? (product.base_price ?? product.basePrice)
+          : spot.price,
+        computedImageUrl: product
+          ? product.variants?.[0]?.images?.[0]?.image_url
+          : spot.image_url,
+        computedVariantId: product
+          ? product.variants?.[0]?.id
+          : spot.variant_id,
+      };
+    });
+  }, [
+    image_url,
+    hotspots,
+    currentHotspots,
+    resolvedProducts,
+    fetchingProductIds,
+    failedProductIds,
+  ]);
+
   return (
     <section
-      className="py-16 px-6 lg:px-16 xl:px-24"
-      style={{ background: sectionBg }}
+      className="py-16 px-6 lg:px-16 xl:px-24 relative"
+      // style={{ background: sectionBg }}
       ref={containerRef}
     >
-      <div className="max-w-screen-xl mx-auto">
+      <div className="max-w-screen-xl mx-auto mt-8">
         {/* Section Header */}
         <div className="text-center mb-10">
           <span className="text-theme-tiny font-bold tracking-[0.25em] text-purple-600 uppercase">
@@ -145,52 +207,69 @@ export function ShoppableLookbook({
         </div>
 
         {/* Interactive Image Container */}
-        <div className="relative w-full aspect-[4/3] md:aspect-[16/9] rounded-3xl shadow-xl border border-slate-100 bg-slate-50 overflow-visible">
-          {image_url ? (
-            <Image
-              src={image_url}
-              alt={displayTitle}
-              fill
-              className="object-cover rounded-3xl"
-              sizes="(max-width: 1280px) 100vw, 1280px"
-              quality={75}
-              placeholder="blur"
-              blurDataURL={LOOKBOOK_BLUR_DATA_URL}
-            />
-          ) : (
-            <Image
-              src={IMAGE_PLACEHOLDER}
-              alt={displayTitle}
-              fill
-              className="object-cover rounded-3xl"
-              sizes="(max-width: 1280px) 100vw, 1280px"
-              quality={75}
-            />
-          )}
+        <div className="relative w-full aspect-[4/3] md:aspect-[16/9] min-h-[400px] rounded-3xl shadow-xl border border-slate-100 bg-slate-50">
+          <div className="absolute inset-0 rounded-3xl overflow-hidden">
+            {image_url ? (
+              <Image
+                src={image_url}
+                alt={displayTitle}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1280px) 100vw, 1280px"
+                quality={75}
+                placeholder="blur"
+                blurDataURL={LOOKBOOK_BLUR_DATA_URL}
+                unoptimized
+              />
+            ) : (
+              <Image
+                src={IMAGE_PLACEHOLDER}
+                alt={displayTitle}
+                fill
+                className="object-cover"
+                sizes="(max-width: 1280px) 100vw, 1280px"
+                quality={75}
+                unoptimized
+              />
+            )}
+          </div>
 
           {/* Render Hotspots */}
           {currentHotspots.map((spot) => {
             const isActive = activeHotspot?.id === spot.id;
             const pId = spot.product_id || spot.productId;
-            const product = pId ? resolvedProducts[pId] : null;
+            const product = pId
+              ? (resolvedProducts[pId] as Record<string, unknown> | undefined)
+              : null;
+            const isFetching = !!pId && fetchingProductIds.has(pId);
+            const hasFailed = !!pId && failedProductIds.has(pId);
+            // Resolve display values: live product data > manual hotspot fields > defaults
+            const useManualData = !pId || hasFailed;
 
-            // Extract values with dynamic fallback support
-            const name = product
-              ? product.name
+            const name: string = product
+              ? ((product.name as string) ??
+                (spot.name || SHOPPABLE_LOOKBOOK_TEXT.PREMIUM_ITEM))
               : spot.name || SHOPPABLE_LOOKBOOK_TEXT.PREMIUM_ITEM;
-            const description = product
-              ? product.description
+            const description: string | undefined = product
+              ? (product.description as string | undefined)
               : spot.description;
-            const price = product
-              ? (product.base_price ?? product.basePrice)
-              : spot.price;
-            const imageUrl = product
-              ? (product.variants?.[0]?.images?.[0]?.image_url ??
-                product.images?.[0]?.image_url ??
-                "")
+            const price: string | number | null = product
+              ? ((product.base_price ?? product.basePrice) as
+                  | string
+                  | number
+                  | null)
+              : ((spot.price as string | number | null) ?? null);
+            const productVariants = product?.variants as
+              | Record<string, unknown>[]
+              | undefined;
+            const imageUrl: string = product
+              ? (((
+                  (productVariants?.[0] as Record<string, unknown> | undefined)
+                    ?.images as Record<string, unknown>[] | undefined
+                )?.[0]?.image_url as string) ?? "")
               : (spot.image_url ?? "");
-            const variantId = product
-              ? (product.variants?.[0]?.id ?? "")
+            const variantId: string = product
+              ? ((productVariants?.[0]?.id as string) ?? "")
               : (spot.variant_id ?? "");
 
             return (
@@ -252,7 +331,19 @@ export function ShoppableLookbook({
                         }`}
                       />
 
-                      {!pId || product ? (
+                      {/* Show skeleton only while in-flight; fall back to manual data on failure */}
+                      {isFetching && !useManualData ? (
+                        <div className="flex flex-col gap-2.5 py-1">
+                          <div className="flex gap-3">
+                            <Skeleton className="h-14 w-14 rounded-xl flex-shrink-0" />
+                            <div className="flex-1 space-y-2 py-1">
+                              <Skeleton className="h-3.5 w-3/4 rounded" />
+                              <Skeleton className="h-3 w-1/2 rounded" />
+                            </div>
+                          </div>
+                          <Skeleton className="h-9 w-full rounded-lg mt-1" />
+                        </div>
+                      ) : (
                         <>
                           <div className="flex gap-3">
                             {/* Thumbnail */}
@@ -279,7 +370,7 @@ export function ShoppableLookbook({
                               )}
                               {description && (
                                 <p className="text-theme-tiny text-slate-400 line-clamp-2 mt-1 leading-normal">
-                                  {description}
+                                  {String(description)}
                                 </p>
                               )}
                             </div>
@@ -290,7 +381,15 @@ export function ShoppableLookbook({
                             <div className="w-full">
                               <AddToCart
                                 productVariantId={variantId}
-                                productVariant={product?.variants?.[0]}
+                                productVariant={
+                                  (
+                                    product as unknown as {
+                                      variants?: Parameters<
+                                        typeof AddToCart
+                                      >[0]["productVariant"][];
+                                    }
+                                  )?.variants?.[0]
+                                }
                                 styles="w-full h-9 bg-theme-primary hover:bg-theme-accent text-white text-theme-caption font-bold rounded-lg transition-colors shadow-sm"
                               />
                             </div>
@@ -303,17 +402,6 @@ export function ShoppableLookbook({
                             </button>
                           )}
                         </>
-                      ) : (
-                        <div className="flex flex-col gap-2.5 py-1">
-                          <div className="flex gap-3">
-                            <Skeleton className="h-14 w-14 rounded-xl flex-shrink-0" />
-                            <div className="flex-1 space-y-2 py-1">
-                              <Skeleton className="h-3.5 w-3/4 rounded" />
-                              <Skeleton className="h-3 w-1/2 rounded" />
-                            </div>
-                          </div>
-                          <Skeleton className="h-9 w-full rounded-lg mt-1" />
-                        </div>
                       )}
                     </motion.div>
                   )}

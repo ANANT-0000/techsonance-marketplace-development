@@ -1,18 +1,45 @@
-import React, { Component, ReactNode } from "react";
+import React, { Component, ReactNode, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { useFormContext } from "react-hook-form";
+import { SecureErrorHandler } from "@/utils/error/error.handler";
+
+import { Building2, Plus, FolderPlus, ChevronDown, Check } from "lucide-react";
+import { PRODUCT_FORM_TEXT } from "@/constants/vendorText";
+import { ProductFormValuesType } from "@/utils/validation";
+import {
+  VENDOR_CREATE_CATEGORY_PATH,
+  VENDOR_CREATE_TAX_PATH,
+  VENDOR_CREATE_WAREHOUSE_PATH,
+} from "@/constants";
+import {
+  FormField,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormMessage,
+} from "@/components/ui/form";
+
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 class SectionErrorBoundary extends Component<
   { children: ReactNode },
-  { hasError: boolean; error: any }
+  { hasError: boolean; error: unknown }
 > {
   constructor(props: { children: ReactNode }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
-  static getDerivedStateFromError(error: any) {
+  static getDerivedStateFromError(error: unknown) {
     return { hasError: true, error };
   }
-  componentDidCatch(error: any, errorInfo: any) {}
+  componentDidCatch(error: unknown) {
+    SecureErrorHandler.handle(error);
+  }
   render() {
     if (this.state.hasError) {
       return (
@@ -26,21 +53,6 @@ class SectionErrorBoundary extends Component<
   }
 }
 
-import {
-  Building2,
-  Plus,
-  FolderPlus,
-  AlertCircle,
-  ChevronDown,
-} from "lucide-react";
-import { PRODUCT_FORM_TEXT } from "@/constants/vendorText";
-import { ProductFormValuesType } from "@/utils/validation";
-import {
-  VENDOR_CREATE_CATEGORY_PATH,
-  VENDOR_CREATE_TAX_PATH,
-  VENDOR_CREATE_WAREHOUSE_PATH,
-} from "@/constants";
-
 interface CategoryTaxationSectionProps {
   categoryOptions: { value: string; label: string }[];
   warehouseOptions: { value: string; label: string }[];
@@ -48,27 +60,26 @@ interface CategoryTaxationSectionProps {
   handleSaveDraftAndRedirect: (path: string) => void;
 }
 
-/**
- * Inline SVG checkmark — no dynamic import, no Suspense risk.
- * Using DynamicIcon inside a conditionally-rendered checkbox tile caused
- * lucide-react/dynamic to throw a Promise (Suspense protocol) on first render
- * without a boundary, blanking the entire page silently.
- */
-const CheckIcon = () => (
-  <svg
-    viewBox="0 0 12 12"
-    width={10}
-    height={10}
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2.5}
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <polyline points="1.5 6 4.5 9 10.5 3" />
-  </svg>
-);
+const CATEGORY_FIELDS = [
+  {
+    name: "taxSlabId" as const,
+    labelKey: "TAX_RATE" as const,
+    placeholderKey: "SELECT_TAX" as const,
+    addPath: VENDOR_CREATE_TAX_PATH,
+  },
+  {
+    name: "warehouseId" as const,
+    labelKey: "WAREHOUSE" as const,
+    placeholderKey: "SELECT_WAREHOUSE" as const,
+    addPath: VENDOR_CREATE_WAREHOUSE_PATH,
+  },
+  {
+    name: "status" as const,
+    labelKey: "STATUS" as const,
+    placeholderKey: "SELECT_STATUS" as const,
+    addPath: null,
+  },
+] as const;
 
 export const CategoryTaxationSection = ({
   categoryOptions,
@@ -76,24 +87,54 @@ export const CategoryTaxationSection = ({
   taxSlabsOptions,
   handleSaveDraftAndRedirect,
 }: CategoryTaxationSectionProps) => {
-  const {
-    register,
-    watch,
-    setValue,
-    getValues,
-    formState: { errors },
-  } = useFormContext<ProductFormValuesType>();
+  const { control, watch, setValue, getValues } =
+    useFormContext<ProductFormValuesType>();
 
   const categoryName = watch("categories");
 
-  // Defensive: RHF multi-checkbox returns an array; guard against edge cases
   const selectedCategories: string[] = Array.isArray(categoryName)
     ? categoryName
     : categoryName
       ? [categoryName as string]
       : [];
 
-  const hasCategorySelected = selectedCategories.length > 0;
+  const showPrimarySelector = selectedCategories.length >= 2;
+
+  // Auto-manage primaryCategory based on selection count
+  useEffect(() => {
+    if (selectedCategories.length === 0) {
+      // Nothing selected — clear primary
+      setValue("primaryCategory", "", { shouldValidate: false });
+    } else if (selectedCategories.length === 1) {
+      // Exactly one — auto-set it as primary, no need for selector
+      setValue("primaryCategory", selectedCategories[0], {
+        shouldValidate: true,
+      });
+    } else {
+      // 2+ selected — keep existing primary only if it's still in the list
+      const currentPrimary = getValues("primaryCategory");
+      if (
+        !currentPrimary ||
+        !selectedCategories.includes(currentPrimary as string)
+      ) {
+        setValue("primaryCategory", "", { shouldValidate: false });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategories.join(",")]);
+
+  const getOptionsForField = (
+    name: (typeof CATEGORY_FIELDS)[number]["name"],
+  ) => {
+    if (name === "taxSlabId") return taxSlabsOptions;
+    if (name === "warehouseId") return warehouseOptions ?? [];
+    if (name === "status")
+      return [
+        { value: "active", label: PRODUCT_FORM_TEXT.LABELS.STATUS_ACTIVE },
+        { value: "inactive", label: PRODUCT_FORM_TEXT.LABELS.STATUS_INACTIVE },
+      ];
+    return [];
+  };
 
   return (
     <SectionErrorBoundary>
@@ -112,291 +153,296 @@ export const CategoryTaxationSection = ({
           </div>
         </div>
 
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
-            {/* ── Category Checkbox List (col-span-1) ─────────────── */}
-            <div className="md:col-span-1">
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="form_label !mb-0">
-                  {PRODUCT_FORM_TEXT.LABELS.CATEGORY}{" "}
-                  <span className="text-red-400 normal-case">*</span>
-                </label>
-                <button
-                  type="button"
-                  className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5 transition-colors"
-                  onClick={() =>
-                    handleSaveDraftAndRedirect(VENDOR_CREATE_CATEGORY_PATH)
-                  }
-                >
-                  <Plus size={11} />
-                  {PRODUCT_FORM_TEXT.ACTIONS.ADD_NEW}
-                </button>
-              </div>
-
-              <div className="border border-slate-200 rounded-xl bg-white overflow-y-auto min-h-[160px] max-h-[220px] p-2 shadow-sm">
-                {categoryOptions.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center text-center p-4 h-full min-h-[130px] rounded-lg border border-dashed border-slate-200 bg-slate-50/50">
-                    <div className="w-8 h-8 bg-indigo-50 text-indigo-400 rounded-full flex items-center justify-center mb-2">
-                      <FolderPlus size={15} />
+        <div className="p-6 overflow-hidden">
+          <div
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full"
+            style={{
+              gridTemplateColumns: `repeat(${showPrimarySelector ? 5 : 4}, minmax(0, 1fr))`,
+              transition: "grid-template-columns 0.35s ease",
+            }}
+          >
+            {/* ── Category Multi-Select Popover ─────────────────────── */}
+            <div className="w-full min-w-0 overflow-hidden">
+              <FormField
+                control={control}
+                name="categories"
+                render={() => (
+                  <FormItem className="min-w-0">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <FormLabel className="!mb-0">
+                        {PRODUCT_FORM_TEXT.LABELS.CATEGORY}{" "}
+                        <span className="text-red-400 normal-case">*</span>
+                      </FormLabel>
+                      <button
+                        type="button"
+                        className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5 transition-colors shrink-0"
+                        onClick={() =>
+                          handleSaveDraftAndRedirect(
+                            VENDOR_CREATE_CATEGORY_PATH,
+                          )
+                        }
+                      >
+                        <Plus size={11} />
+                        {PRODUCT_FORM_TEXT.ACTIONS.ADD_NEW}
+                      </button>
                     </div>
-                    <p className="text-xs font-semibold text-slate-700 mb-0.5">
-                      {PRODUCT_FORM_TEXT.EMPTY_STATES.CATEGORY_TITLE}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mb-3 max-w-[140px]">
-                      {PRODUCT_FORM_TEXT.EMPTY_STATES.CATEGORY_DESC}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleSaveDraftAndRedirect(VENDOR_CREATE_CATEGORY_PATH)
-                      }
-                      className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-all flex items-center gap-1"
-                    >
-                      <Plus size={11} />
-                      {PRODUCT_FORM_TEXT.EMPTY_STATES.CATEGORY_BTN}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-0.5">
-                    {categoryOptions.map((c) => {
-                      const isChecked = selectedCategories.includes(c.value);
-                      return (
-                        <label
-                          key={c.value}
-                          className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all duration-150 ${
-                            isChecked
-                              ? "bg-indigo-50 border border-indigo-100"
-                              : "hover:bg-slate-50 border border-transparent"
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all duration-150 relative ${
-                              isChecked
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "border-slate-300 bg-white"
-                            }`}
+                    <FormControl>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className="w-full min-w-0 flex items-center justify-between gap-2 px-3 h-9 rounded-md border border-input bg-background text-sm shadow-sm hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
                           >
-                            {isChecked && <CheckIcon />}
-                            <input
-                              type="checkbox"
-                              value={c.value}
-                              checked={isChecked}
-                              onChange={(e) => {
-                                try {
-                                  const checked = e.target.checked;
-                                  let newCategories = [...selectedCategories];
-
-                                  if (checked) {
-                                    newCategories.push(c.value);
-                                  } else {
-                                    newCategories = newCategories.filter(
-                                      (val) => val !== c.value,
-                                    );
-                                  }
-
-                                  setValue("categories", newCategories, {
-                                    shouldValidate: true,
-                                    shouldDirty: true,
-                                  });
-
-                                  // If unselected and it was the primary category, clear primary
-                                  const currentPrimary =
-                                    getValues("primaryCategory");
-                                  if (!checked && currentPrimary === c.value) {
-                                    setValue("primaryCategory", "", {
-                                      shouldValidate: true,
-                                    });
-                                  }
-                                } catch (err) {}
-                              }}
-                              className="sr-only"
+                            <span className="truncate text-left text-sm">
+                              {selectedCategories.length === 0 ? (
+                                <span className="text-muted-foreground">
+                                  {PRODUCT_FORM_TEXT.LABELS.CATEGORY}
+                                </span>
+                              ) : selectedCategories.length === 1 ? (
+                                (categoryOptions.find(
+                                  (o) => o.value === selectedCategories[0],
+                                )?.label ?? selectedCategories[0])
+                              ) : (
+                                `${selectedCategories.length} selected`
+                              )}
+                            </span>
+                            <ChevronDown
+                              size={14}
+                              className="shrink-0 text-muted-foreground"
                             />
-                          </div>
-                          <span
-                            className={`text-xs font-medium leading-tight ${
-                              isChecked ? "text-indigo-800" : "text-slate-600"
-                            }`}
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 p-2" align="start">
+                          {categoryOptions.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center text-center p-4 rounded-lg border border-dashed border-slate-200 bg-slate-50/50">
+                              <div className="w-8 h-8 bg-indigo-50 text-indigo-400 rounded-full flex items-center justify-center mb-2">
+                                <FolderPlus size={15} />
+                              </div>
+                              <p className="text-xs font-semibold text-slate-700 mb-0.5">
+                                {PRODUCT_FORM_TEXT.EMPTY_STATES.CATEGORY_TITLE}
+                              </p>
+                              <p className="text-[11px] text-slate-400 mb-3 max-w-[140px]">
+                                {PRODUCT_FORM_TEXT.EMPTY_STATES.CATEGORY_DESC}
+                              </p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  handleSaveDraftAndRedirect(
+                                    VENDOR_CREATE_CATEGORY_PATH,
+                                  )
+                                }
+                                className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 h-7"
+                              >
+                                <Plus size={11} className="mr-1" />
+                                {PRODUCT_FORM_TEXT.EMPTY_STATES.CATEGORY_BTN}
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="space-y-0.5">
+                              {categoryOptions.map((c) => {
+                                const isChecked = selectedCategories.includes(
+                                  c.value,
+                                );
+                                return (
+                                  <button
+                                    key={c.value}
+                                    type="button"
+                                    onClick={() => {
+                                      try {
+                                        let newCategories = [
+                                          ...selectedCategories,
+                                        ];
+                                        if (isChecked) {
+                                          newCategories = newCategories.filter(
+                                            (val) => val !== c.value,
+                                          );
+                                          const currentPrimary =
+                                            getValues("primaryCategory");
+                                          if (currentPrimary === c.value) {
+                                            setValue("primaryCategory", "", {
+                                              shouldValidate: true,
+                                            });
+                                          }
+                                        } else {
+                                          newCategories.push(c.value);
+                                        }
+                                        setValue("categories", newCategories, {
+                                          shouldValidate: true,
+                                          shouldDirty: true,
+                                        });
+                                      } catch (err) {
+                                        SecureErrorHandler.handle(err);
+                                      }
+                                    }}
+                                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors ${
+                                      isChecked
+                                        ? "bg-indigo-50 border border-indigo-100"
+                                        : "hover:bg-slate-50 border border-transparent"
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-all ${
+                                        isChecked
+                                          ? "bg-indigo-600 border-indigo-600 text-white"
+                                          : "border-slate-300 bg-white"
+                                      }`}
+                                    >
+                                      {isChecked && (
+                                        <Check size={10} strokeWidth={3} />
+                                      )}
+                                    </div>
+                                    <span
+                                      className={`text-xs font-medium leading-tight ${
+                                        isChecked
+                                          ? "text-indigo-800"
+                                          : "text-slate-600"
+                                      }`}
+                                    >
+                                      {c.label}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* ── Primary Category — appears only when 2+ categories are selected ── */}
+            <AnimatePresence initial={false}>
+              {showPrimarySelector && (
+                <motion.div
+                  key="primaryCategory"
+                  initial={{ opacity: 0, width: 0, overflow: "hidden" }}
+                  animate={{ opacity: 1, width: "auto", overflow: "visible" }}
+                  exit={{ opacity: 0, width: 0, overflow: "hidden" }}
+                  transition={{ duration: 0.35, ease: "easeInOut" }}
+                  className="min-w-0"
+                >
+                  <FormField
+                    control={control}
+                    name="primaryCategory"
+                    render={({ field: hookField }) => (
+                      <FormItem className="min-w-0 max-w-full overflow-hidden">
+                        <FormLabel className="!mb-1.5 block">
+                          {PRODUCT_FORM_TEXT.LABELS.PRIMARY_CATEGORY}{" "}
+                          <span className="text-red-400 normal-case">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <select
+                            value={
+                              typeof hookField.value === "string"
+                                ? hookField.value
+                                : ""
+                            }
+                            onChange={(e) => hookField.onChange(e.target.value)}
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring text-foreground appearance-none cursor-pointer"
+                            style={{
+                              backgroundImage:
+                                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+                              backgroundRepeat: "no-repeat",
+                              backgroundPosition: "right 8px center",
+                              paddingRight: "32px",
+                            }}
                           >
-                            {c.label}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {errors.categories && (
-                <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
-                  <AlertCircle size={12} />
-                  {errors.categories.message}
-                </p>
+                            <option value="" disabled>
+                              {PRODUCT_FORM_TEXT.LABELS.SELECT_PRIMARY_CATEGORY}
+                            </option>
+                            {selectedCategories.map((val) => {
+                              const opt = categoryOptions.find(
+                                (o) => o.value === val,
+                              );
+                              return (
+                                <option key={val} value={val}>
+                                  {opt?.label ?? val}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </motion.div>
               )}
-            </div>
+            </AnimatePresence>
 
-            {/* ── Right 4-col sub-grid: conditionally includes Primary Category ── */}
-            <div className="md:col-span-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {/*
-               * Primary Category — always rendered to preserve grid layout,
-               * visibility toggled via CSS to prevent reflow layout jumps.
-               */}
-              <div
-                className={
-                  hasCategorySelected ? "" : "invisible pointer-events-none"
-                }
-              >
-                <label className="form_label">
-                  {PRODUCT_FORM_TEXT.LABELS.PRIMARY_CATEGORY}{" "}
-                  <span className="text-red-400 normal-case">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    {...register("primaryCategory")}
-                    className="form_input appearance-none pr-9"
-                  >
-                    <option value="" disabled>
-                      {PRODUCT_FORM_TEXT.LABELS.SELECT_PRIMARY_CATEGORY}
-                    </option>
-                    {selectedCategories.map((val: string) => {
-                      const opt = categoryOptions.find((o) => o.value === val);
-                      return (
-                        <option key={val} value={val}>
-                          {opt?.label ?? val}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  />
-                </div>
-              </div>
-
-              {/* Tax Rate */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="form_label !mb-0">
-                    {PRODUCT_FORM_TEXT.LABELS.TAX_RATE}{" "}
-                    <span className="text-red-400 normal-case">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5 transition-colors"
-                    onClick={() =>
-                      handleSaveDraftAndRedirect(VENDOR_CREATE_TAX_PATH)
-                    }
-                  >
-                    <Plus size={11} />
-                    {PRODUCT_FORM_TEXT.ACTIONS.ADD_NEW}
-                  </button>
-                </div>
-                <div className="relative">
-                  <select
-                    {...register("taxSlabId")}
-                    className={`form_input appearance-none pr-9 ${errors.taxSlabId ? "form_input_invalid" : ""}`}
-                  >
-                    <option value="" disabled>
-                      {PRODUCT_FORM_TEXT.LABELS.SELECT_TAX}
-                    </option>
-                    {taxSlabsOptions.map((t, idx) => (
-                      <option key={idx} value={t.value}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  />
-                </div>
-                {errors.taxSlabId && (
-                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
-                    <AlertCircle size={12} />
-                    {errors.taxSlabId.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Warehouse */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="form_label !mb-0">
-                    {PRODUCT_FORM_TEXT.LABELS.WAREHOUSE}{" "}
-                    <span className="text-red-400 normal-case">*</span>
-                  </label>
-                  <button
-                    type="button"
-                    className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5 transition-colors"
-                    onClick={() =>
-                      handleSaveDraftAndRedirect(VENDOR_CREATE_WAREHOUSE_PATH)
-                    }
-                  >
-                    <Plus size={11} />
-                    {PRODUCT_FORM_TEXT.ACTIONS.ADD_NEW}
-                  </button>
-                </div>
-                <div className="relative">
-                  <select
-                    {...register("warehouseId")}
-                    className={`form_input appearance-none pr-9 ${errors.warehouseId ? "form_input_invalid" : ""}`}
-                  >
-                    <option value="" disabled>
-                      {PRODUCT_FORM_TEXT.LABELS.SELECT_WAREHOUSE}
-                    </option>
-                    {warehouseOptions?.map((v) => (
-                      <option value={v.value} key={v.value}>
-                        {v.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  />
-                </div>
-                {errors.warehouseId && (
-                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
-                    <AlertCircle size={12} />
-                    {errors.warehouseId.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Status — inside the grid, not orphaned below */}
-              <div>
-                <label className="form_label">
-                  {PRODUCT_FORM_TEXT.LABELS.STATUS}{" "}
-                  <span className="text-red-400 normal-case">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    {...register("status")}
-                    className={`form_input appearance-none pr-9 ${errors.status ? "form_input_invalid" : ""}`}
-                  >
-                    <option value="" disabled>
-                      {PRODUCT_FORM_TEXT.LABELS.SELECT_STATUS}
-                    </option>
-                    <option value="active">
-                      {PRODUCT_FORM_TEXT.LABELS.STATUS_ACTIVE}
-                    </option>
-                    <option value="inactive">
-                      {PRODUCT_FORM_TEXT.LABELS.STATUS_INACTIVE}
-                    </option>
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-                  />
-                </div>
-                {errors.status && (
-                  <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1.5">
-                    <AlertCircle size={12} />
-                    {errors.status.message}
-                  </p>
-                )}
-              </div>
-            </div>
+            {/* ── Right selectors (Tax, Warehouse, Status) ── */}
+            {CATEGORY_FIELDS.map(
+              ({ name, labelKey, placeholderKey, addPath }) => {
+                const options = getOptionsForField(name);
+                return (
+                  <div key={name} className="min-w-0 overflow-hidden">
+                    <FormField
+                      control={control}
+                      name={name}
+                      render={({ field: hookField }) => (
+                        <FormItem className="min-w-0 max-w-full overflow-hidden">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <FormLabel className="!mb-0">
+                              {PRODUCT_FORM_TEXT.LABELS[labelKey]}{" "}
+                              <span className="text-red-400 normal-case">
+                                *
+                              </span>
+                            </FormLabel>
+                            {addPath && (
+                              <button
+                                type="button"
+                                className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 flex items-center gap-0.5 transition-colors shrink-0"
+                                onClick={() =>
+                                  handleSaveDraftAndRedirect(addPath)
+                                }
+                              >
+                                <Plus size={11} />
+                                {PRODUCT_FORM_TEXT.ACTIONS.ADD_NEW}
+                              </button>
+                            )}
+                          </div>
+                          <FormControl>
+                            <select
+                              value={
+                                typeof hookField.value === "string"
+                                  ? hookField.value
+                                  : ""
+                              }
+                              onChange={(e) =>
+                                hookField.onChange(e.target.value)
+                              }
+                              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring text-foreground appearance-none cursor-pointer"
+                              style={{
+                                backgroundImage:
+                                  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+                                backgroundRepeat: "no-repeat",
+                                backgroundPosition: "right 8px center",
+                                paddingRight: "32px",
+                              }}
+                            >
+                              <option value="" disabled>
+                                {PRODUCT_FORM_TEXT.LABELS[placeholderKey]}
+                              </option>
+                              {options.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                );
+              },
+            )}
           </div>
         </div>
       </div>

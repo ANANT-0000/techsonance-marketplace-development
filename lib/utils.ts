@@ -18,6 +18,7 @@ import {
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { CmsPlanFeature } from "@/hooks/useCmsSubscriptionPlans";
+import { SecureErrorHandler } from "@/utils/error/error.handler";
 import { BOOLEAN_VALUE } from "@/components/common/subscriptions/SharedUI";
 
 export function cn(...inputs: ClassValue[]) {
@@ -520,6 +521,7 @@ export function resolveDisplayPrice(
       hasDiscount,
     };
   } catch (error) {
+    SecureErrorHandler.handle(error);
     return {
       price: 0,
       mrp: 0,

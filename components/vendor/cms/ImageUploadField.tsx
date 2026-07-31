@@ -1,7 +1,7 @@
 import { UiText } from "@/constants/ui-text";
 import AxiosAPI from "@/lib/axios";
 import { authToken } from "@/utils/authToken";
-import { ImageIcon, Loader2, Upload, X } from "lucide-react";
+import { AlertCircle, ImageIcon, Loader2, Upload, X } from "lucide-react";
 import { useState } from "react";
 export async function deleteCloudinaryAsset(url: string): Promise<void> {
   try {
@@ -142,17 +142,17 @@ export function ImageUploadField({
 
   return (
     <div className="group">
-      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 transition-colors group-focus-within:text-slate-900">
+      <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-2 transition-colors group-focus-within:text-stone-900">
         {label}
       </label>
-      <div className="flex items-center gap-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-[0_2px_10px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-slate-300 min-w-0 group-focus-within:ring-[3px] group-focus-within:ring-slate-900/10 group-focus-within:border-slate-900">
+      <div className="flex items-center gap-4 bg-white border border-stone-200 rounded-2xl p-4 shadow-[0_2px_10px_rgb(0,0,0,0.02)] transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-stone-300 min-w-0 group-focus-within:ring-[3px] group-focus-within:ring-amber-800/15 group-focus-within:border-amber-800/40">
         {/* Preview thumbnail with Remove button */}
         {value ? (
           <div className="relative w-14 h-14 rounded-xl overflow-visible shrink-0 group/img">
             <img
               src={value}
               alt={UiText.PREVIEW}
-              className="w-14 h-14 object-cover rounded-xl border border-slate-200 bg-white shadow-sm transition-transform duration-300 group-hover/img:scale-105"
+              className="w-14 h-14 object-cover rounded-xl border border-stone-200 bg-white shadow-sm transition-transform duration-300 group-hover/img:scale-105"
             />
             {/* Remove ✕ button */}
             <button
@@ -162,25 +162,32 @@ export function ImageUploadField({
               title={UiText.REMOVE_IMAGE}
               className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center shadow-md transition-all duration-200 disabled:opacity-50 hover:scale-110"
             >
-              <X size={12} strokeWidth={3} />
+              {removing ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : (
+                <X size={12} strokeWidth={3} />
+              )}
             </button>
           </div>
         ) : (
-          <div className="w-14 h-14 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 text-slate-400 shrink-0 transition-colors duration-300 group-hover:border-slate-400 group-hover:text-slate-900 group-hover:bg-slate-100">
+          <div className="w-14 h-14 rounded-xl border-2 border-dashed border-stone-200 flex items-center justify-center bg-stone-50 text-stone-400 shrink-0 transition-colors duration-300 group-hover:border-amber-800/40 group-hover:text-amber-800 group-hover:bg-amber-50/40">
             <ImageIcon size={20} className="opacity-75" />
           </div>
         )}
 
         <div className="flex-1 min-w-0 flex flex-col justify-center">
-          <label className="inline-flex items-center gap-2 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-xl px-4 py-2 text-[13px] font-semibold cursor-pointer transition-all self-start shadow-sm active:scale-95">
+          <label className="inline-flex items-center gap-2 bg-stone-50 hover:bg-stone-100 text-stone-700 hover:text-stone-900 border border-stone-200 hover:border-stone-300 rounded-xl px-4 py-2 text-[13px] font-semibold cursor-pointer transition-all self-start shadow-sm active:scale-95">
             {uploading ? (
               <>
-                <Loader2 size={14} className="animate-spin text-slate-900" />
+                <Loader2 size={14} className="animate-spin text-amber-800" />
                 <span>{UiText.UPLOADING}</span>
               </>
             ) : (
               <>
-                <Upload size={14} className="text-slate-500 group-hover:text-slate-900 transition-colors" />
+                <Upload
+                  size={14}
+                  className="text-stone-500 group-hover:text-stone-900 transition-colors"
+                />
                 <span>{UiText.UPLOAD_IMAGE}</span>
               </>
             )}
@@ -193,16 +200,19 @@ export function ImageUploadField({
             />
           </label>
           {error && (
-            <p className="text-[12px] text-red-500 mt-2 font-medium bg-red-50 px-2 py-1 rounded-md inline-block self-start">{error}</p>
+            <p className="flex items-center gap-1.5 text-[12px] text-red-600 mt-2 font-medium bg-red-50 px-2.5 py-1.5 rounded-lg self-start">
+              <AlertCircle size={12} className="shrink-0" />
+              {error}
+            </p>
           )}
           {!error && autoSaved && (
-            <p className="text-[12px] text-emerald-600 mt-2 font-semibold">
+            <p className="text-[12px] text-emerald-700 mt-2 font-semibold">
               ✓ {UiText.AUTO_SAVED}
             </p>
           )}
           {!error && !autoSaved && value && (
             <p
-              className="text-[12px] text-emerald-600 mt-2 font-medium truncate opacity-75"
+              className="text-[12px] text-emerald-700 mt-2 font-medium truncate opacity-75"
               title={value}
             >
               ✓ {UiText.CLOUDINARY_ATTACHED}

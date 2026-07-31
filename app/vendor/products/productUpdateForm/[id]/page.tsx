@@ -21,6 +21,7 @@ import {
 import { authToken } from "@/utils/authToken";
 import { redirect, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useVendorSession } from "@/hooks/useVendorSession";
 import { useAppSelector } from "@/hooks/reduxHooks";
 import { VEDNOR_LOGIN_PATH } from "@/constants";
 
@@ -151,15 +152,7 @@ const getTaxSlabsOptions = async (
 };
 
 export default function ProductUpdateFormPage() {
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setCompanyId(getClientCompanyId());
-    setToken(authToken());
-    setIsMounted(true);
-  }, []);
+  const { companyId, token, isMounted } = useVendorSession();
 
   const { id } = useParams<{ id: string }>();
   const { user } = useAppSelector((state) => state.auth);
@@ -244,9 +237,11 @@ export default function ProductUpdateFormPage() {
       : {};
 
   return (
-    <main className="flex-1 w-full h-full overflow-y-auto px-4 sm:px-8 py-1 bg-[#fafafa]">
-      <div className="mx-auto space-y-6 pt-4 pb-12">
+    <main className="flex-1 w-full max-w-[100vw] h-full overflow-y-auto overflow-x-hidden px-4 sm:px-8 py-1 bg-[#fafafa]">
+      <div className="mx-auto w-full space-y-6 pt-4 pb-12">
         <ProductForm
+          companyId={companyId}
+          token={token}
         categoryOptions={categoryOptions}
         warehouseOptions={warehouseOptions}
         taxSlabsOptions={taxSlabsOptions}

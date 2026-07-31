@@ -1,16 +1,14 @@
 "use client";
 import { getClientCompanyId } from "@/utils/getCompanyId";
 import {
-  fetchTaxProfiles,
   fetchTaxSlabOptions,
-  fetchTaxSlabs,
   fetchVendorsProductsCategory,
   fetchVendorWarehouse,
 } from "@/utils/vendorApiClient";
 import { ProductForm } from "@/components/vendor/ProductForm";
-import { authToken } from "@/utils/authToken";
-import { redirect } from "next/navigation";
+
 import { useEffect, useState } from "react";
+import { useVendorSession } from "@/hooks/useVendorSession";
 import { useAppSelector } from "@/hooks/reduxHooks";
 import { SessionErrorCard } from "@/components/vendor/SessionErrorCard";
 
@@ -58,15 +56,7 @@ const getTaxSlabsOptions = async (
     .catch((error) => {});
 };
 export default function ProductFormPage() {
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setCompanyId(getClientCompanyId());
-    setToken(authToken());
-    setIsMounted(true);
-  }, []);
+  const { companyId, token, isMounted } = useVendorSession();
 
   const { user } = useAppSelector((state) => state.auth);
   const vendorId = (user && "vendor_id" in user ? user.vendor_id : "") ?? "";
@@ -94,9 +84,11 @@ export default function ProductFormPage() {
   }
 
   return (
-    <main className="flex-1 w-full h-full overflow-y-auto px-4 sm:px-8 py-1 bg-[#fafafa]">
-      <div className="mx-auto space-y-6 pt-4 pb-12">
+    <main className="flex-1 w-full max-w-[100vw] h-full overflow-y-auto overflow-x-hidden px-4 sm:px-8 py-1 bg-[#fafafa]">
+      <div className="mx-auto w-full space-y-6 pt-4 pb-12">
         <ProductForm
+          companyId={companyId}
+          token={token}
           categoryOptions={categoryOptions}
           vendorId={vendorId}
           warehouseOptions={warehouseOptions}

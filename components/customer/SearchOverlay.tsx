@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { Search, X, Clock, TrendingUp, ArrowRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { fetchProductSuggestions } from '@/utils/commonAPiClient';
 import { SEARCH_OVERLAY_TEXT } from '@/constants/customerText';
 
@@ -304,51 +305,13 @@ interface DesktopPaletteProps {
 }
 
 function DesktopPalette({ open, onClose, anchorRef }: DesktopPaletteProps) {
-    // Close on outside click
-    const paletteRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        if (!open) return;
-        const handler = (e: MouseEvent) => {
-            if (
-                paletteRef.current &&
-                !paletteRef.current.contains(e.target as Node) &&
-                (!anchorRef?.current || !anchorRef.current.contains(e.target as Node))
-            ) {
-                onClose();
-            }
-        };
-        // Small delay so the trigger click doesn't immediately close
-        const t = setTimeout(() => document.addEventListener('mousedown', handler), 50);
-        return () => {
-            clearTimeout(t);
-            document.removeEventListener('mousedown', handler);
-        };
-    }, [open, onClose, anchorRef]);
-
-    // Keyboard escape
-    useEffect(() => {
-        if (!open) return;
-        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('keydown', handler);
-        return () => document.removeEventListener('keydown', handler);
-    }, [open, onClose]);
-
     return (
-        <AnimatePresence>
-            {open && (
-                <motion.div
-                    ref={paletteRef}
-                    initial={{ opacity: 0, scale: 0.97, y: -6 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.97, y: -6 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                    className="absolute top-full right-0 mt-2 w-[480px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
-                >
-                    <OverlayBody onClose={onClose} />
-                </motion.div>
-            )}
-        </AnimatePresence>
+        <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+            <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-white rounded-2xl shadow-2xl border border-gray-100 gap-0 top-[20%] translate-y-0">
+                <DialogTitle className="sr-only">Search Products</DialogTitle>
+                <OverlayBody onClose={onClose} />
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -360,59 +323,27 @@ interface MobileDrawerProps {
 }
 
 function MobileDrawer({ open, onClose }: MobileDrawerProps) {
-    // Lock body scroll when open
-    useEffect(() => {
-        if (open) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = '';
-        }
-        return () => { document.body.style.overflow = ''; };
-    }, [open]);
-
     if (typeof document === 'undefined') return null;
 
-    return createPortal(
-        <AnimatePresence>
-            {open && (
-                <>
-                    {/* Backdrop */}
-                    <motion.div
-                        key="backdrop"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
+    return (
+        <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
+            <DialogContent className="fixed inset-x-0 top-0 z-50 bg-white rounded-b-3xl shadow-2xl p-0 gap-0 border-none sm:rounded-b-3xl overflow-hidden mt-0 translate-y-0 translate-x-0 w-full sm:max-w-full">
+                <DialogTitle className="sr-only">Search Products Mobile</DialogTitle>
+                {/* Drag handle */}
+                <div className="flex items-center justify-between px-5 pt-4 pb-1">
+                    <span className="text-theme-caption font-bold text-gray-500 uppercase tracking-wider">{SEARCH_OVERLAY_TEXT.SEARCH_UPPER}</span>
+                    <button
                         onClick={onClose}
-                    />
-                    {/* Drawer */}
-                    <motion.div
-                        key="drawer"
-                        initial={{ y: '-100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '-100%' }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
-                        className="fixed inset-x-0 top-0 z-50 bg-white rounded-b-3xl shadow-2xl"
+                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
                     >
-                        {/* Drag handle */}
-                        <div className="flex items-center justify-between px-5 pt-4 pb-1">
-                            <span className="text-theme-caption font-bold text-gray-500 uppercase tracking-wider">{SEARCH_OVERLAY_TEXT.SEARCH_UPPER}</span>
-                            <button
-                                onClick={onClose}
-                                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                            >
-                                <X className="w-4 h-4 text-gray-600" />
-                            </button>
-                        </div>
-                        <OverlayBody onClose={onClose} />
-                        {/* Safe area padding for iOS */}
-                        <div className="pb-safe-bottom h-4" />
-                    </motion.div>
-                </>
-            )}
-        </AnimatePresence>,
-        document.body,
+                        <X className="w-4 h-4 text-gray-600" />
+                    </button>
+                </div>
+                <OverlayBody onClose={onClose} />
+                {/* Safe area padding for iOS */}
+                <div className="pb-safe-bottom h-4" />
+            </DialogContent>
+        </Dialog>
     );
 }
 

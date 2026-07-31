@@ -18,12 +18,13 @@ const VENDOR_BASE_PATH = "/vendor";
 
 const ROOT_PATH = "/";
 
+import { SidebarProvider } from "@/components/ui/sidebar";
+
 export default function VendorLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const isSidebarOpen = useAppSelector((state) => state.sidebar.isSidebarOpen);
   const { isAuthenticated, role, user } = useAppSelector(
     (state: RootState) => state.auth,
   );
@@ -96,7 +97,7 @@ export default function VendorLayout({
   }
 
   return (
-    <>
+    <SidebarProvider>
       <main className={`flex w-full h-screen overflow-hidden`}>
         <Sidebar NAV_LINKS={VENDOR_NAV_LINKS} basePath={VENDOR_BASE_PATH} />
         <div className="flex-1 flex flex-col min-w-0 h-full overflow-auto">
@@ -108,6 +109,6 @@ export default function VendorLayout({
           {children}
         </div>
       </main>
-    </>
+    </SidebarProvider>
   );
 }

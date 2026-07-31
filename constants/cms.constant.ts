@@ -97,6 +97,7 @@ export enum CmsDataKey {
   CATEGORIES_CACHE_KEY = "homepage_categories",
   CMS_CACHE_KEY = "homepage_cms",
   LANG_KEY = "user_lang",
+  DYNAMIC_SECTIONS = "dynamic_sections",
 }
 
 export enum LayoutSection {
@@ -111,4 +112,5 @@ export enum LayoutSection {
   SOCIAL_PROOF = "social_proof",
   CURATED = "curated",
   TRUST_BADGES = "trust_badges",
+  DYNAMIC_SECTIONS = "dynamic_sections",
 }
